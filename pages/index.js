@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { Search, CheckCircle, Package, User, Phone, MapPin, TrendingUp, BarChart3, AlertCircle, Box } from 'lucide-react';
+import React, { useState } from 'react';
 
 const SistemaInversiones = () => {
   const [vistaActual, setVistaActual] = useState('login');
@@ -7,11 +6,10 @@ const SistemaInversiones = () => {
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState('pendientes');
 
-  // Trabajadoras con nombres ficticios
-  const [vendedoras] = useState([
+  const vendedoras = [
     { id: 1, nombre: 'Carolina', pin: '1234', color: '#ef4444' },
     { id: 2, nombre: 'Patricia', pin: '5678', color: '#3b82f6' }
-  ]);
+  ];
 
   const [clientes, setClientes] = useState([
     {
@@ -19,7 +17,6 @@ const SistemaInversiones = () => {
       nombre: 'Juan Pérez',
       cedula: '123456789',
       telefono: '3001234567',
-      direccion: 'Calle 10 #20-30',
       zona: 'Centro',
       vendedoraId: 1,
       pedido: {
@@ -27,7 +24,6 @@ const SistemaInversiones = () => {
         cuotaDiaria: 25000,
         cuotasPagadas: 10,
         totalCuotas: 24,
-        fechaInicio: '2025-01-15',
         ultimoPago: '2025-01-25'
       }
     },
@@ -36,7 +32,6 @@ const SistemaInversiones = () => {
       nombre: 'María García',
       cedula: '987654321',
       telefono: '3109876543',
-      direccion: 'Carrera 5 #15-20',
       zona: 'Norte',
       vendedoraId: 1,
       pedido: {
@@ -44,7 +39,6 @@ const SistemaInversiones = () => {
         cuotaDiaria: 15000,
         cuotasPagadas: 5,
         totalCuotas: 24,
-        fechaInicio: '2025-01-20',
         ultimoPago: '2025-01-24'
       }
     },
@@ -53,7 +47,6 @@ const SistemaInversiones = () => {
       nombre: 'Carlos Rodríguez',
       cedula: '456789123',
       telefono: '3156789012',
-      direccion: 'Avenida 8 #30-40',
       zona: 'Sur',
       vendedoraId: 2,
       pedido: {
@@ -61,25 +54,7 @@ const SistemaInversiones = () => {
         cuotaDiaria: 20000,
         cuotasPagadas: 15,
         totalCuotas: 24,
-        fechaInicio: '2025-01-10',
         ultimoPago: '2025-01-25'
-      }
-    },
-    {
-      id: 4,
-      nombre: 'Ana López',
-      cedula: '321654987',
-      telefono: '3201234567',
-      direccion: 'Calle 25 #10-15',
-      zona: 'Occidente',
-      vendedoraId: 2,
-      pedido: {
-        valorTotal: 600000,
-        cuotaDiaria: 30000,
-        cuotasPagadas: 20,
-        totalCuotas: 24,
-        fechaInicio: '2025-01-05',
-        ultimoPago: '2025-01-24'
       }
     }
   ]);
@@ -125,9 +100,8 @@ const SistemaInversiones = () => {
         return cumpleBusqueda && !yaPagoHoy(c) && c.pedido.cuotasPagadas < c.pedido.totalCuotas;
       } else if (filtro === 'cobrados') {
         return cumpleBusqueda && yaPagoHoy(c);
-      } else {
-        return cumpleBusqueda && c.pedido.cuotasPagadas < c.pedido.totalCuotas;
       }
+      return cumpleBusqueda && c.pedido.cuotasPagadas < c.pedido.totalCuotas;
     });
 
   const estadisticas = {
@@ -141,7 +115,6 @@ const SistemaInversiones = () => {
       .reduce((sum, c) => sum + c.pedido.cuotaDiaria, 0)
   };
 
-  // Vista de Login
   const LoginView = () => {
     const [pin, setPin] = useState('');
     const [vendedoraSeleccionada, setVendedoraSeleccionada] = useState(null);
@@ -155,93 +128,156 @@ const SistemaInversiones = () => {
       if (vendedora) {
         setUsuarioActual(vendedora);
         setVistaActual('home');
-        setPin('');
       } else {
         alert('PIN incorrecto');
       }
     };
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Package size={40} className="text-emerald-600" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Inversiones</h1>
-            <p className="text-gray-600">Control de Inventario</p>
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '24px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          padding: '40px',
+          maxWidth: '400px',
+          width: '100%'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+            <div style={{
+              background: '#d1fae5',
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px',
+              fontSize: '40px'
+            }}>📦</div>
+            <h1 style={{ fontSize: '36px', fontWeight: 'bold', color: '#1f2937', marginBottom: '10px' }}>Inversiones</h1>
+            <p style={{ color: '#6b7280' }}>Control de Inventario</p>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-3">Selecciona tu usuario</label>
-            <div className="space-y-3">
+          <div style={{ marginBottom: '25px' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+              Selecciona tu usuario
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {vendedoras.map(v => (
                 <button
                   key={v.id}
                   onClick={() => setVendedoraSeleccionada(v.id)}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition ${
-                    vendedoraSeleccionada === v.id 
-                      ? 'border-emerald-500 bg-emerald-50' 
-                      : 'border-gray-200 hover:border-emerald-300'
-                  }`}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: vendedoraSeleccionada === v.id ? '3px solid #10b981' : '2px solid #e5e7eb',
+                    background: vendedoraSeleccionada === v.id ? '#d1fae5' : 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
                 >
-                  <div className="flex items-center">
-                    <div 
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold mr-3"
-                      style={{ backgroundColor: v.color }}
-                    >
-                      {v.nombre.charAt(0)}
-                    </div>
-                    <span className="font-semibold text-lg">{v.nombre}</span>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    background: v.color,
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    marginRight: '12px'
+                  }}>
+                    {v.nombre.charAt(0)}
                   </div>
+                  <span style={{ fontSize: '18px', fontWeight: '600' }}>{v.nombre}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Ingresa tu PIN</label>
+          <div style={{ marginBottom: '25px' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+              Ingresa tu PIN
+            </label>
             <input
               type="password"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-              className="w-full text-center text-2xl font-bold border-2 border-gray-300 rounded-xl p-4 focus:border-emerald-500 focus:outline-none"
-              placeholder="••••"
               maxLength="4"
-              inputMode="numeric"
+              placeholder="••••"
+              style={{
+                width: '100%',
+                textAlign: 'center',
+                fontSize: '32px',
+                fontWeight: 'bold',
+                border: '2px solid #d1d5db',
+                borderRadius: '12px',
+                padding: '16px',
+                outline: 'none'
+              }}
             />
           </div>
 
           <button
             onClick={handleLogin}
             disabled={!vendedoraSeleccionada}
-            className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition ${
-              vendedoraSeleccionada
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-xl'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+            style={{
+              width: '100%',
+              padding: '16px',
+              borderRadius: '12px',
+              border: 'none',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              background: vendedoraSeleccionada ? 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)' : '#d1d5db',
+              color: 'white',
+              cursor: vendedoraSeleccionada ? 'pointer' : 'not-allowed',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+            }}
           >
             Ingresar
           </button>
 
-          <div className="mt-6 text-center text-xs text-gray-500">
-            Sistema de Control de Inventario v1.0
+          <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '12px', color: '#9ca3af' }}>
+            Sistema v1.0
           </div>
         </div>
       </div>
     );
   };
 
-  // Vista Principal (Home)
   const HomeView = () => (
-    <div className="pb-20 bg-gray-50 min-h-screen">
-      {/* Header con estadísticas */}
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-6 rounded-b-3xl shadow-lg mb-6 sticky top-0 z-10">
-        <div className="flex items-center justify-between mb-4">
+    <div style={{ minHeight: '100vh', background: '#f9fafb', paddingBottom: '80px' }}>
+      {/* Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
+        color: 'white',
+        padding: '24px',
+        borderRadius: '0 0 24px 24px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        marginBottom: '24px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
-            <h2 className="text-2xl font-bold">Hola, {usuarioActual?.nombre}! 👋</h2>
-            <p className="text-emerald-100 text-sm">
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Hola, {usuarioActual?.nombre}! 👋</h2>
+            <p style={{ fontSize: '14px', opacity: 0.9, margin: '4px 0 0 0' }}>
               {new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
@@ -252,76 +288,120 @@ const SistemaInversiones = () => {
                 setVistaActual('login');
               }
             }}
-            className="bg-white/20 backdrop-blur-sm p-3 rounded-full active:scale-95 transition"
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '48px',
+              height: '48px',
+              cursor: 'pointer',
+              fontSize: '24px'
+            }}
           >
-            <User size={24} />
+            👤
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4">
-            <div className="text-white/80 text-xs mb-1">Pendientes Hoy</div>
-            <div className="text-3xl font-bold">{estadisticas.pendientes}</div>
-            <div className="text-xs text-white/80 mt-1">{formatCurrency(estadisticas.totalRecaudarHoy)}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{
+            background: 'rgba(255,255,255,0.2)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '12px',
+            padding: '16px'
+          }}>
+            <div style={{ fontSize: '12px', opacity: 0.9 }}>Pendientes Hoy</div>
+            <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{estadisticas.pendientes}</div>
+            <div style={{ fontSize: '12px', opacity: 0.8 }}>{formatCurrency(estadisticas.totalRecaudarHoy)}</div>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4">
-            <div className="text-white/80 text-xs mb-1">Recaudados Hoy</div>
-            <div className="text-3xl font-bold">{estadisticas.cobradosHoy}</div>
-            <div className="text-xs text-white/80 mt-1">{formatCurrency(estadisticas.recaudadoHoy)}</div>
+          <div style={{
+            background: 'rgba(255,255,255,0.2)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '12px',
+            padding: '16px'
+          }}>
+            <div style={{ fontSize: '12px', opacity: 0.9 }}>Recaudados Hoy</div>
+            <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{estadisticas.cobradosHoy}</div>
+            <div style={{ fontSize: '12px', opacity: 0.8 }}>{formatCurrency(estadisticas.recaudadoHoy)}</div>
           </div>
         </div>
       </div>
 
-      {/* Barra de búsqueda */}
-      <div className="px-4 mb-4">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar cliente, zona o cédula..."
-            className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-gray-200 focus:border-emerald-500 focus:outline-none text-lg shadow-sm"
-          />
-        </div>
+      {/* Búsqueda */}
+      <div style={{ padding: '0 16px', marginBottom: '16px' }}>
+        <input
+          type="text"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="🔍 Buscar cliente, zona o cédula..."
+          style={{
+            width: '100%',
+            padding: '16px 16px 16px 40px',
+            fontSize: '16px',
+            border: '2px solid #e5e7eb',
+            borderRadius: '16px',
+            outline: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+          }}
+        />
       </div>
 
       {/* Filtros */}
-      <div className="px-4 mb-4 flex gap-2 overflow-x-auto pb-2">
+      <div style={{ padding: '0 16px', marginBottom: '16px', display: 'flex', gap: '8px', overflowX: 'auto' }}>
         <button
           onClick={() => setFiltro('pendientes')}
-          className={`px-6 py-3 rounded-full font-semibold whitespace-nowrap transition active:scale-95 ${
-            filtro === 'pendientes' 
-              ? 'bg-red-500 text-white shadow-lg' 
-              : 'bg-white text-gray-600 border-2 border-gray-200'
-          }`}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '20px',
+            border: 'none',
+            fontWeight: '600',
+            whiteSpace: 'nowrap',
+            background: filtro === 'pendientes' ? '#ef4444' : 'white',
+            color: filtro === 'pendientes' ? 'white' : '#6b7280',
+            cursor: 'pointer',
+            boxShadow: filtro === 'pendientes' ? '0 4px 12px rgba(239,68,68,0.3)' : 'none',
+            border: filtro === 'pendientes' ? 'none' : '2px solid #e5e7eb'
+          }}
         >
           ⏰ Pendientes ({estadisticas.pendientes})
         </button>
         <button
           onClick={() => setFiltro('cobrados')}
-          className={`px-6 py-3 rounded-full font-semibold whitespace-nowrap transition active:scale-95 ${
-            filtro === 'cobrados' 
-              ? 'bg-green-500 text-white shadow-lg' 
-              : 'bg-white text-gray-600 border-2 border-gray-200'
-          }`}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '20px',
+            border: 'none',
+            fontWeight: '600',
+            whiteSpace: 'nowrap',
+            background: filtro === 'cobrados' ? '#10b981' : 'white',
+            color: filtro === 'cobrados' ? 'white' : '#6b7280',
+            cursor: 'pointer',
+            boxShadow: filtro === 'cobrados' ? '0 4px 12px rgba(16,185,129,0.3)' : 'none',
+            border: filtro === 'cobrados' ? 'none' : '2px solid #e5e7eb'
+          }}
         >
           ✓ Cobrados ({estadisticas.cobradosHoy})
         </button>
         <button
           onClick={() => setFiltro('todos')}
-          className={`px-6 py-3 rounded-full font-semibold whitespace-nowrap transition active:scale-95 ${
-            filtro === 'todos' 
-              ? 'bg-emerald-500 text-white shadow-lg' 
-              : 'bg-white text-gray-600 border-2 border-gray-200'
-          }`}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '20px',
+            border: 'none',
+            fontWeight: '600',
+            whiteSpace: 'nowrap',
+            background: filtro === 'todos' ? '#10b981' : 'white',
+            color: filtro === 'todos' ? 'white' : '#6b7280',
+            cursor: 'pointer',
+            boxShadow: filtro === 'todos' ? '0 4px 12px rgba(16,185,129,0.3)' : 'none',
+            border: filtro === 'todos' ? 'none' : '2px solid #e5e7eb'
+          }}
         >
           📦 Todos
         </button>
       </div>
 
-      {/* Tarjetas de clientes */}
-      <div className="px-4 space-y-3 pb-6">
+      {/* Tarjetas */}
+      <div style={{ padding: '0 16px' }}>
         {clientesFiltrados.map(cliente => {
           const pagado = yaPagoHoy(cliente);
           const progreso = (cliente.pedido.cuotasPagadas / cliente.pedido.totalCuotas) * 100;
@@ -330,76 +410,85 @@ const SistemaInversiones = () => {
           return (
             <div
               key={cliente.id}
-              className={`rounded-2xl shadow-lg overflow-hidden ${
-                pagado ? 'bg-gradient-to-br from-green-50 to-emerald-100 border-2 border-green-400' : 
-                completado ? 'bg-gray-100 border-2 border-gray-300' :
-                'bg-white border-2 border-gray-200'
-              }`}
+              style={{
+                background: pagado ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'white',
+                border: pagado ? '2px solid #10b981' : '2px solid #e5e7eb',
+                borderRadius: '16px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                marginBottom: '16px',
+                overflow: 'hidden'
+              }}
             >
-              {/* Header de la tarjeta */}
-              <div className="p-4 pb-3">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-gray-800 mb-1">{cliente.nombre}</h3>
-                    <div className="flex items-center text-sm text-gray-600 mb-1">
-                      <MapPin size={14} className="mr-1" />
-                      {cliente.zona}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Phone size={14} className="mr-1" />
-                      {cliente.telefono}
-                    </div>
+              <div style={{ padding: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>{cliente.nombre}</h3>
+                    <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>📍 {cliente.zona}</p>
+                    <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>📞 {cliente.telefono}</p>
                   </div>
                   {pagado && (
-                    <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center shadow-md">
-                      <CheckCircle size={14} className="mr-1" />
-                      PAGÓ
+                    <div style={{
+                      background: '#10b981',
+                      color: 'white',
+                      padding: '8px 12px',
+                      borderRadius: '20px',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      height: 'fit-content',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      ✓ PAGÓ
                     </div>
                   )}
-                  {completado && (
-                    <div className="bg-gray-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                      COMPLETO
+                </div>
+
+                <div style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
+                  color: 'white',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '12px'
+                }}>
+                  <div style={{ fontSize: '12px', opacity: 0.9 }}>Cuota Diaria</div>
+                  <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{formatCurrency(cliente.pedido.cuotaDiaria)}</div>
+                </div>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '8px' }}>
+                    <span style={{ fontWeight: '500' }}>Progreso del Pedido</span>
+                    <span style={{ fontWeight: 'bold' }}>{cliente.pedido.cuotasPagadas}/{cliente.pedido.totalCuotas} cuotas</span>
+                  </div>
+                  <div style={{ width: '100%', height: '12px', background: '#e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${progreso}%`,
+                      height: '100%',
+                      background: 'linear-gradient(90deg, #10b981 0%, #14b8a6 100%)',
+                      transition: 'width 0.5s'
+                    }}></div>
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: '14px', fontWeight: 'bold', marginTop: '4px' }}>
+                    {progreso.toFixed(0)}%
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                  <div style={{ background: '#dbeafe', padding: '12px', borderRadius: '8px', border: '1px solid #93c5fd' }}>
+                    <div style={{ fontSize: '11px', color: '#1e40af' }}>Valor Total</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e40af' }}>
+                      {formatCurrency(cliente.pedido.valorTotal)}
                     </div>
-                  )}
-                </div>
-
-                {/* Monto grande */}
-                <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl p-4 mb-3 shadow-md">
-                  <div className="text-xs opacity-90 mb-1">Cuota Diaria</div>
-                  <div className="text-3xl font-bold">{formatCurrency(cliente.pedido.cuotaDiaria)}</div>
-                </div>
-
-                {/* Progreso */}
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs text-gray-600 mb-2">
-                    <span className="font-medium">Progreso del Pedido</span>
-                    <span className="font-bold">{cliente.pedido.cuotasPagadas}/{cliente.pedido.totalCuotas} cuotas</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-                    <div 
-                      className="bg-gradient-to-r from-emerald-500 to-teal-600 h-3 rounded-full transition-all duration-500"
-                      style={{ width: `${progreso}%` }}
-                    ></div>
-                  </div>
-                  <div className="text-center text-sm font-bold text-gray-700 mt-1">{progreso.toFixed(0)}%</div>
-                </div>
-
-                {/* Detalles del pedido */}
-                <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                    <div className="text-gray-600 mb-1">Valor Total</div>
-                    <div className="font-bold text-blue-700">{formatCurrency(cliente.pedido.valorTotal)}</div>
-                  </div>
-                  <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
-                    <div className="text-gray-600 mb-1">Saldo Restante</div>
-                    <div className="font-bold text-orange-700">
+                  <div style={{ background: '#fed7aa', padding: '12px', borderRadius: '8px', border: '1px solid #fb923c' }}>
+                    <div style={{ fontSize: '11px', color: '#9a3412' }}>Saldo Restante</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#9a3412' }}>
                       {formatCurrency(cliente.pedido.cuotaDiaria * (cliente.pedido.totalCuotas - cliente.pedido.cuotasPagadas))}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Botón de cobro */}
               {!pagado && !completado && (
                 <button
                   onClick={() => {
@@ -407,16 +496,38 @@ const SistemaInversiones = () => {
                       registrarPago(cliente.id);
                     }
                   }}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-5 font-bold text-lg flex items-center justify-center hover:from-green-600 hover:to-emerald-700 transition active:scale-95 shadow-lg"
+                  style={{
+                    width: '100%',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '20px',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
                 >
-                  <CheckCircle size={24} className="mr-2" />
-                  REGISTRAR PAGO {formatCurrency(cliente.pedido.cuotaDiaria)}
+                  ✓ REGISTRAR PAGO {formatCurrency(cliente.pedido.cuotaDiaria)}
                 </button>
               )}
 
               {pagado && (
-                <div className="bg-green-500 text-white py-4 font-bold text-center flex items-center justify-center shadow-inner">
-                  <CheckCircle size={20} className="mr-2" />
+                <div style={{
+                  width: '100%',
+                  background: '#10b981',
+                  color: 'white',
+                  padding: '16px',
+                  textAlign: 'center',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}>
                   ✓ Registrado Hoy
                 </div>
               )}
@@ -425,12 +536,16 @@ const SistemaInversiones = () => {
         })}
 
         {clientesFiltrados.length === 0 && (
-          <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
-            <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Box size={40} className="text-gray-400" />
-            </div>
-            <p className="text-gray-500 text-lg font-medium">No hay clientes para mostrar</p>
-            <p className="text-gray-400 text-sm mt-1">Intenta cambiar el filtro o la búsqueda</p>
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            background: 'white',
+            borderRadius: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📦</div>
+            <p style={{ fontSize: '18px', fontWeight: '500', color: '#6b7280' }}>No hay clientes para mostrar</p>
+            <p style={{ fontSize: '14px', color: '#9ca3af', marginTop: '8px' }}>Intenta cambiar el filtro o la búsqueda</p>
           </div>
         )}
       </div>
@@ -438,7 +553,7 @@ const SistemaInversiones = () => {
   );
 
   return (
-    <div className="min-h-screen">
+    <div>
       {vistaActual === 'login' && <LoginView />}
       {vistaActual === 'home' && usuarioActual && <HomeView />}
     </div>
