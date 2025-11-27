@@ -5,11 +5,13 @@ const SistemaInversiones = () => {
   const [usuarioActual, setUsuarioActual] = useState(null);
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState('pendientes');
+  const [mostrarModalPrestamo, setMostrarModalPrestamo] = useState(false);
+  const [paso, setPaso] = useState(1); // 1: elegir acción, 2: buscar/crear cliente, 3: confirmar préstamo
 
-  const vendedoras = [
-    { id: 1, nombre: 'Carolina', pin: '1234', color: '#ef4444' },
-    { id: 2, nombre: 'Patricia', pin: '5678', color: '#3b82f6' }
-  ];
+  const [vendedoras] = useState([
+    { id: 1, nombre: 'Carolina', pin: '1234', color: '#ef4444', capitalDisponible: 2500000 },
+    { id: 2, nombre: 'Patricia', pin: '5678', color: '#3b82f6', capitalDisponible: 3200000 }
+  ]);
 
   const [clientes, setClientes] = useState([
     {
@@ -18,14 +20,7 @@ const SistemaInversiones = () => {
       cedula: '123456789',
       telefono: '3001234567',
       zona: 'Centro',
-      vendedoraId: 1,
-      pedido: {
-        valorTotal: 500000,
-        cuotaDiaria: 25000,
-        cuotasPagadas: 10,
-        totalCuotas: 24,
-        ultimoPago: '2025-01-25'
-      }
+      vendedoraId: 1
     },
     {
       id: 2,
@@ -33,14 +28,7 @@ const SistemaInversiones = () => {
       cedula: '987654321',
       telefono: '3109876543',
       zona: 'Norte',
-      vendedoraId: 1,
-      pedido: {
-        valorTotal: 300000,
-        cuotaDiaria: 15000,
-        cuotasPagadas: 5,
-        totalCuotas: 24,
-        ultimoPago: '2025-01-24'
-      }
+      vendedoraId: 1
     },
     {
       id: 3,
@@ -48,14 +36,43 @@ const SistemaInversiones = () => {
       cedula: '456789123',
       telefono: '3156789012',
       zona: 'Sur',
+      vendedoraId: 2
+    }
+  ]);
+
+  const [prestamos, setPrestamos] = useState([
+    {
+      id: 1,
+      clienteId: 1,
+      vendedoraId: 1,
+      valorTotal: 500000,
+      cuotaDiaria: 25000,
+      cuotasPagadas: 10,
+      totalCuotas: 24,
+      ultimoPago: '2025-01-25',
+      estado: 'activo'
+    },
+    {
+      id: 2,
+      clienteId: 2,
+      vendedoraId: 1,
+      valorTotal: 300000,
+      cuotaDiaria: 15000,
+      cuotasPagadas: 5,
+      totalCuotas: 24,
+      ultimoPago: '2025-01-24',
+      estado: 'activo'
+    },
+    {
+      id: 3,
+      clienteId: 3,
       vendedoraId: 2,
-      pedido: {
-        valorTotal: 400000,
-        cuotaDiaria: 20000,
-        cuotasPagadas: 15,
-        totalCuotas: 24,
-        ultimoPago: '2025-01-25'
-      }
+      valorTotal: 400000,
+      cuotaDiaria: 20000,
+      cuotasPagadas: 15,
+      totalCuotas: 24,
+      ultimoPago: '2025-01-25',
+      estado: 'activo'
     }
   ]);
 
@@ -69,50 +86,66 @@ const SistemaInversiones = () => {
 
   const registrarPago = (clienteId) => {
     const hoy = new Date().toISOString().split('T')[0];
-    setClientes(clientes.map(c => {
-      if (c.id === clienteId) {
+    setPrestamos(prestamos.map(p => {
+      if (p.clienteId === clienteId && p.estado === 'activo') {
         return {
-          ...c,
-          pedido: {
-            ...c.pedido,
-            cuotasPagadas: c.pedido.cuotasPagadas + 1,
-            ultimoPago: hoy
-          }
+          ...p,
+          cuotasPagadas: p.cuotasPagadas + 1,
+          ultimoPago: hoy
         };
       }
-      return c;
+      return p;
     }));
   };
 
-  const yaPagoHoy = (cliente) => {
+  const yaPagoHoy = (clienteId) => {
     const hoy = new Date().toISOString().split('T')[0];
-    return cliente.pedido.ultimoPago === hoy;
+    const prestamo = prestamos.find(p => p.clienteId === clienteId && p.estado === 'activo');
+    return prestamo && prestamo.ultimoPago === hoy;
   };
 
-  const clientesFiltrados = clientes
-    .filter(c => c.vendedoraId === usuarioActual?.id)
-    .filter(c => {
-      const cumpleBusqueda = c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-                            c.cedula.includes(busqueda) ||
-                            c.zona.toLowerCase().includes(busqueda.toLowerCase());
-      
-      if (filtro === 'pendientes') {
-        return cumpleBusqueda && !yaPagoHoy(c) && c.pedido.cuotasPagadas < c.pedido.totalCuotas;
-      } else if (filtro === 'cobrados') {
-        return cumpleBusqueda && yaPagoHoy(c);
-      }
-      return cumpleBusqueda && c.pedido.cuotasPagadas < c.pedido.totalCuotas;
-    });
+  const getPrestamoActivo = (clienteId) => {
+    return prestamos.find(p => p.clienteId === clienteId && p.estado === 'activo');
+  };
+
+  const misClientes = clientes.filter(c => c.vendedoraId === usuarioActual?.id);
+  
+  const clientesFiltrados = misClientes.filter(c => {
+    const prestamo = getPrestamoActivo(c.id);
+    if (!prestamo) return false;
+    
+    const cumpleBusqueda = c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+                          c.cedula.includes(busqueda) ||
+                          c.zona.toLowerCase().includes(busqueda.toLowerCase());
+    
+    if (filtro === 'pendientes') {
+      return cumpleBusqueda && !yaPagoHoy(c.id) && prestamo.cuotasPagadas < prestamo.totalCuotas;
+    } else if (filtro === 'cobrados') {
+      return cumpleBusqueda && yaPagoHoy(c.id);
+    }
+    return cumpleBusqueda && prestamo.cuotasPagadas < prestamo.totalCuotas;
+  });
 
   const estadisticas = {
-    pendientes: clientes.filter(c => c.vendedoraId === usuarioActual?.id && !yaPagoHoy(c) && c.pedido.cuotasPagadas < c.pedido.totalCuotas).length,
-    cobradosHoy: clientes.filter(c => c.vendedoraId === usuarioActual?.id && yaPagoHoy(c)).length,
-    totalRecaudarHoy: clientes
-      .filter(c => c.vendedoraId === usuarioActual?.id && !yaPagoHoy(c) && c.pedido.cuotasPagadas < c.pedido.totalCuotas)
-      .reduce((sum, c) => sum + c.pedido.cuotaDiaria, 0),
-    recaudadoHoy: clientes
-      .filter(c => c.vendedoraId === usuarioActual?.id && yaPagoHoy(c))
-      .reduce((sum, c) => sum + c.pedido.cuotaDiaria, 0)
+    pendientes: misClientes.filter(c => {
+      const prestamo = getPrestamoActivo(c.id);
+      return prestamo && !yaPagoHoy(c.id) && prestamo.cuotasPagadas < prestamo.totalCuotas;
+    }).length,
+    cobradosHoy: misClientes.filter(c => yaPagoHoy(c.id)).length,
+    totalRecaudarHoy: misClientes.reduce((sum, c) => {
+      const prestamo = getPrestamoActivo(c.id);
+      if (prestamo && !yaPagoHoy(c.id) && prestamo.cuotasPagadas < prestamo.totalCuotas) {
+        return sum + prestamo.cuotaDiaria;
+      }
+      return sum;
+    }, 0),
+    recaudadoHoy: misClientes.reduce((sum, c) => {
+      const prestamo = getPrestamoActivo(c.id);
+      if (prestamo && yaPagoHoy(c.id)) {
+        return sum + prestamo.cuotaDiaria;
+      }
+      return sum;
+    }, 0)
   };
 
   const LoginView = () => {
@@ -251,17 +284,13 @@ const SistemaInversiones = () => {
           >
             Ingresar
           </button>
-
-          <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '12px', color: '#9ca3af' }}>
-            Sistema v1.0
-          </div>
         </div>
       </div>
     );
   };
 
   const HomeView = () => (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', background: '#f9fafb', paddingBottom: '100px' }}>
       {/* Header */}
       <div style={{
         background: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
@@ -302,6 +331,11 @@ const SistemaInversiones = () => {
           </button>
         </div>
 
+        <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
+          <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '4px' }}>💰 Capital Disponible</div>
+          <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{formatCurrency(usuarioActual?.capitalDisponible || 0)}</div>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div style={{
             background: 'rgba(255,255,255,0.2)',
@@ -332,80 +366,49 @@ const SistemaInversiones = () => {
           type="text"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="🔍 Buscar cliente, zona o cédula..."
+          placeholder="🔍 Buscar cliente..."
           style={{
             width: '100%',
-            padding: '16px 16px 16px 40px',
+            padding: '16px',
             fontSize: '16px',
             border: '2px solid #e5e7eb',
             borderRadius: '16px',
-            outline: 'none',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+            outline: 'none'
           }}
         />
       </div>
 
       {/* Filtros */}
       <div style={{ padding: '0 16px', marginBottom: '16px', display: 'flex', gap: '8px', overflowX: 'auto' }}>
-        <button
-          onClick={() => setFiltro('pendientes')}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '20px',
-            border: 'none',
-            fontWeight: '600',
-            whiteSpace: 'nowrap',
-            background: filtro === 'pendientes' ? '#ef4444' : 'white',
-            color: filtro === 'pendientes' ? 'white' : '#6b7280',
-            cursor: 'pointer',
-            boxShadow: filtro === 'pendientes' ? '0 4px 12px rgba(239,68,68,0.3)' : 'none',
-            border: filtro === 'pendientes' ? 'none' : '2px solid #e5e7eb'
-          }}
-        >
-          ⏰ Pendientes ({estadisticas.pendientes})
-        </button>
-        <button
-          onClick={() => setFiltro('cobrados')}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '20px',
-            border: 'none',
-            fontWeight: '600',
-            whiteSpace: 'nowrap',
-            background: filtro === 'cobrados' ? '#10b981' : 'white',
-            color: filtro === 'cobrados' ? 'white' : '#6b7280',
-            cursor: 'pointer',
-            boxShadow: filtro === 'cobrados' ? '0 4px 12px rgba(16,185,129,0.3)' : 'none',
-            border: filtro === 'cobrados' ? 'none' : '2px solid #e5e7eb'
-          }}
-        >
-          ✓ Cobrados ({estadisticas.cobradosHoy})
-        </button>
-        <button
-          onClick={() => setFiltro('todos')}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '20px',
-            border: 'none',
-            fontWeight: '600',
-            whiteSpace: 'nowrap',
-            background: filtro === 'todos' ? '#10b981' : 'white',
-            color: filtro === 'todos' ? 'white' : '#6b7280',
-            cursor: 'pointer',
-            boxShadow: filtro === 'todos' ? '0 4px 12px rgba(16,185,129,0.3)' : 'none',
-            border: filtro === 'todos' ? 'none' : '2px solid #e5e7eb'
-          }}
-        >
-          📦 Todos
-        </button>
+        {['pendientes', 'cobrados', 'todos'].map(f => (
+          <button
+            key={f}
+            onClick={() => setFiltro(f)}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '20px',
+              border: 'none',
+              fontWeight: '600',
+              whiteSpace: 'nowrap',
+              background: filtro === f ? '#10b981' : 'white',
+              color: filtro === f ? 'white' : '#6b7280',
+              cursor: 'pointer',
+              border: filtro === f ? 'none' : '2px solid #e5e7eb'
+            }}
+          >
+            {f === 'pendientes' ? '⏰ Pendientes' : f === 'cobrados' ? '✓ Cobrados' : '📦 Todos'}
+          </button>
+        ))}
       </div>
 
-      {/* Tarjetas */}
+      {/* Tarjetas de clientes */}
       <div style={{ padding: '0 16px' }}>
         {clientesFiltrados.map(cliente => {
-          const pagado = yaPagoHoy(cliente);
-          const progreso = (cliente.pedido.cuotasPagadas / cliente.pedido.totalCuotas) * 100;
-          const completado = cliente.pedido.cuotasPagadas >= cliente.pedido.totalCuotas;
+          const prestamo = getPrestamoActivo(cliente.id);
+          if (!prestamo) return null;
+          
+          const pagado = yaPagoHoy(cliente.id);
+          const progreso = (prestamo.cuotasPagadas / prestamo.totalCuotas) * 100;
 
           return (
             <div
@@ -414,15 +417,14 @@ const SistemaInversiones = () => {
                 background: pagado ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'white',
                 border: pagado ? '2px solid #10b981' : '2px solid #e5e7eb',
                 borderRadius: '16px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                 marginBottom: '16px',
                 overflow: 'hidden'
               }}
             >
               <div style={{ padding: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>{cliente.nombre}</h3>
+                  <div>
+                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>{cliente.nombre}</h3>
                     <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>📍 {cliente.zona}</p>
                     <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>📞 {cliente.telefono}</p>
                   </div>
@@ -434,10 +436,7 @@ const SistemaInversiones = () => {
                       borderRadius: '20px',
                       fontSize: '12px',
                       fontWeight: 'bold',
-                      height: 'fit-content',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
+                      height: 'fit-content'
                     }}>
                       ✓ PAGÓ
                     </div>
@@ -452,13 +451,13 @@ const SistemaInversiones = () => {
                   marginBottom: '12px'
                 }}>
                   <div style={{ fontSize: '12px', opacity: 0.9 }}>Cuota Diaria</div>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{formatCurrency(cliente.pedido.cuotaDiaria)}</div>
+                  <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{formatCurrency(prestamo.cuotaDiaria)}</div>
                 </div>
 
                 <div style={{ marginBottom: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: '500' }}>Progreso del Pedido</span>
-                    <span style={{ fontWeight: 'bold' }}>{cliente.pedido.cuotasPagadas}/{cliente.pedido.totalCuotas} cuotas</span>
+                    <span>Progreso</span>
+                    <span style={{ fontWeight: 'bold' }}>{prestamo.cuotasPagadas}/{prestamo.totalCuotas}</span>
                   </div>
                   <div style={{ width: '100%', height: '12px', background: '#e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
                     <div style={{
@@ -468,31 +467,13 @@ const SistemaInversiones = () => {
                       transition: 'width 0.5s'
                     }}></div>
                   </div>
-                  <div style={{ textAlign: 'center', fontSize: '14px', fontWeight: 'bold', marginTop: '4px' }}>
-                    {progreso.toFixed(0)}%
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-                  <div style={{ background: '#dbeafe', padding: '12px', borderRadius: '8px', border: '1px solid #93c5fd' }}>
-                    <div style={{ fontSize: '11px', color: '#1e40af' }}>Valor Total</div>
-                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e40af' }}>
-                      {formatCurrency(cliente.pedido.valorTotal)}
-                    </div>
-                  </div>
-                  <div style={{ background: '#fed7aa', padding: '12px', borderRadius: '8px', border: '1px solid #fb923c' }}>
-                    <div style={{ fontSize: '11px', color: '#9a3412' }}>Saldo Restante</div>
-                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#9a3412' }}>
-                      {formatCurrency(cliente.pedido.cuotaDiaria * (cliente.pedido.totalCuotas - cliente.pedido.cuotasPagadas))}
-                    </div>
-                  </div>
                 </div>
               </div>
 
-              {!pagado && !completado && (
+              {!pagado && (
                 <button
                   onClick={() => {
-                    if (confirm(`¿Confirmar pago de ${formatCurrency(cliente.pedido.cuotaDiaria)} de ${cliente.nombre}?`)) {
+                    if (confirm(`¿Confirmar pago de ${formatCurrency(prestamo.cuotaDiaria)}?`)) {
                       registrarPago(cliente.id);
                     }
                   }}
@@ -504,51 +485,126 @@ const SistemaInversiones = () => {
                     padding: '20px',
                     fontSize: '18px',
                     fontWeight: 'bold',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
+                    cursor: 'pointer'
                   }}
                 >
-                  ✓ REGISTRAR PAGO {formatCurrency(cliente.pedido.cuotaDiaria)}
+                  ✓ REGISTRAR PAGO
                 </button>
-              )}
-
-              {pagado && (
-                <div style={{
-                  width: '100%',
-                  background: '#10b981',
-                  color: 'white',
-                  padding: '16px',
-                  textAlign: 'center',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}>
-                  ✓ Registrado Hoy
-                </div>
               )}
             </div>
           );
         })}
 
         {clientesFiltrados.length === 0 && (
-          <div style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            background: 'white',
-            borderRadius: '16px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-          }}>
+          <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '16px' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>📦</div>
-            <p style={{ fontSize: '18px', fontWeight: '500', color: '#6b7280' }}>No hay clientes para mostrar</p>
-            <p style={{ fontSize: '14px', color: '#9ca3af', marginTop: '8px' }}>Intenta cambiar el filtro o la búsqueda</p>
+            <p style={{ color: '#6b7280' }}>No hay clientes para mostrar</p>
           </div>
         )}
       </div>
+
+      {/* Botón flotante Nuevo Préstamo */}
+      <button
+        onClick={() => setMostrarModalPrestamo(true)}
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          width: '70px',
+          height: '70px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          color: 'white',
+          border: 'none',
+          fontSize: '32px',
+          cursor: 'pointer',
+          boxShadow: '0 8px 24px rgba(16,185,129,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100
+        }}
+      >
+        ➕
+      </button>
+
+      {/* Modal Nuevo Préstamo - CONTINUARÁ EN SIGUIENTE PARTE */}
+      {mostrarModalPrestamo && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '24px',
+            padding: '24px',
+            maxWidth: '400px',
+            width: '100%'
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Nuevo Préstamo</h2>
+            
+            <button
+              style={{
+                width: '100%',
+                padding: '20px',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                marginBottom: '12px',
+                cursor: 'pointer'
+              }}
+            >
+              🔍 Buscar Cliente Existente
+            </button>
+
+            <button
+              style={{
+                width: '100%',
+                padding: '20px',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                marginBottom: '12px',
+                cursor: 'pointer'
+              }}
+            >
+              ➕ Crear Nuevo Cliente
+            </button>
+
+            <button
+              onClick={() => setMostrarModalPrestamo(false)}
+              style={{
+                width: '100%',
+                padding: '16px',
+                background: '#f3f4f6',
+                color: '#6b7280',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 
