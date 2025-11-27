@@ -18,6 +18,11 @@ const SistemaInversiones = () => {
     direccion: ''
   });
   const [montoPrestamo, setMontoPrestamo] = useState('');
+  
+  // Handlers separados para evitar re-renders
+  const handleNuevoClienteChange = (campo, valor) => {
+    setNuevoCliente(prev => ({...prev, [campo]: valor}));
+  };
 
   const [vendedoras, setVendedoras] = useState([
     { id: 1, nombre: 'Carolina', pin: '1234', color: '#ef4444', capitalDisponible: 2500000 },
@@ -166,6 +171,29 @@ const SistemaInversiones = () => {
     .filter(c => !prestamos.find(p => p.clienteId === c.id && p.estado === 'activo'))
     .filter(c => c.nombre.toLowerCase().includes(busquedaCliente.toLowerCase()) || 
                  c.cedula.includes(busquedaCliente));
+
+  const enviarWhatsApp = (cliente, tipo) => {
+    const prestamo = getPrestamoActivo(cliente.id);
+    let mensaje = '';
+    
+    switch(tipo) {
+      case 'recordatorio':
+        mensaje = `Hola ${cliente.nombre}, te recuerdo que hoy debes pagar tu cuota de ${formatCurrency(prestamo?.cuotaDiaria || 0)}. ¡Gracias!`;
+        break;
+      case 'mora':
+        const dias = getDiasAtraso(cliente.id);
+        mensaje = `Hola ${cliente.nombre}, tienes ${dias} día${dias > 1 ? 's' : ''} de atraso en tu pago. Por favor comunícate conmigo lo antes posible.`;
+        break;
+      case 'felicitacion':
+        mensaje = `¡Felicitaciones ${cliente.nombre}! Gracias por tu puntualidad en los pagos. Eres un excelente cliente.`;
+        break;
+      default:
+        mensaje = `Hola ${cliente.nombre}, ¿cómo estás?`;
+    }
+    
+    const url = `https://wa.me/57${cliente.telefono}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+  };
 
   const getDiasAtraso = (clienteId) => {
     const prestamo = getPrestamoActivo(clienteId);
@@ -639,11 +667,31 @@ const SistemaInversiones = () => {
                           borderRadius: '20px',
                           fontSize: '12px',
                           fontWeight: 'bold',
-                          textDecoration: 'none'
+                          textDecoration: 'none',
+                          display: 'block',
+                          marginBottom: '8px'
                         }}
                       >
                         📞 Llamar
                       </a>
+                    )}
+                    {!pagado && (
+                      <button
+                        onClick={() => enviarWhatsApp(cliente, getEstadoMora(cliente.id) === 'mora' ? 'mora' : 'recordatorio')}
+                        style={{
+                          background: '#25D366',
+                          color: 'white',
+                          padding: '8px 12px',
+                          borderRadius: '20px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          border: 'none',
+                          cursor: 'pointer',
+                          width: '100%'
+                        }}
+                      >
+                        💬 WhatsApp
+                      </button>
                     )}
                   </div>
                 </div>
@@ -695,6 +743,38 @@ const SistemaInversiones = () => {
                 >
                   ✓ REGISTRAR PAGO
                 </button>
+              )}
+
+              {pagado && (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => enviarWhatsApp(cliente, 'felicitacion')}
+                    style={{
+                      flex: 1,
+                      background: '#25D366',
+                      color: 'white',
+                      border: 'none',
+                      padding: '16px',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      borderRadius: '0 0 0 14px'
+                    }}
+                  >
+                    💬 Felicitar
+                  </button>
+                  <div style={{
+                    flex: 1,
+                    background: '#10b981',
+                    color: 'white',
+                    padding: '16px',
+                    textAlign: 'center',
+                    fontWeight: 'bold',
+                    borderRadius: '0 0 14px 0'
+                  }}>
+                    ✓ Pagado
+                  </div>
+                </div>
               )}
             </div>
           );
@@ -838,7 +918,7 @@ const SistemaInversiones = () => {
                       <input
                         type="text"
                         value={nuevoCliente.nombre}
-                        onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})}
+                        onChange={(e) => handleNuevoClienteChange('nombre', e.target.value)}
                         placeholder="Juan Pérez"
                         autoComplete="off"
                         style={{
@@ -859,7 +939,7 @@ const SistemaInversiones = () => {
                       <input
                         type="text"
                         value={nuevoCliente.cedula}
-                        onChange={(e) => setNuevoCliente({...nuevoCliente, cedula: e.target.value})}
+                        onChange={(e) => handleNuevoClienteChange('cedula', e.target.value)}
                         placeholder="1234567890"
                         autoComplete="off"
                         style={{
@@ -880,7 +960,7 @@ const SistemaInversiones = () => {
                       <input
                         type="tel"
                         value={nuevoCliente.telefono}
-                        onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})}
+                        onChange={(e) => handleNuevoClienteChange('telefono', e.target.value)}
                         placeholder="3001234567"
                         autoComplete="off"
                         style={{
@@ -901,7 +981,7 @@ const SistemaInversiones = () => {
                       <input
                         type="text"
                         value={nuevoCliente.zona}
-                        onChange={(e) => setNuevoCliente({...nuevoCliente, zona: e.target.value})}
+                        onChange={(e) => handleNuevoClienteChange('zona', e.target.value)}
                         placeholder="Centro"
                         autoComplete="off"
                         style={{
@@ -922,7 +1002,7 @@ const SistemaInversiones = () => {
                       <input
                         type="text"
                         value={nuevoCliente.direccion}
-                        onChange={(e) => setNuevoCliente({...nuevoCliente, direccion: e.target.value})}
+                        onChange={(e) => handleNuevoClienteChange('direccion', e.target.value)}
                         placeholder="Calle 123 #45-67"
                         autoComplete="off"
                         style={{
@@ -1299,11 +1379,28 @@ const SistemaInversiones = () => {
                         borderRadius: '8px',
                         textDecoration: 'none',
                         fontSize: '14px',
-                        fontWeight: 'bold'
+                        fontWeight: 'bold',
+                        marginRight: '8px'
                       }}
                     >
                       📞 Llamar ahora
                     </a>
+                    <button
+                      onClick={() => enviarWhatsApp(cliente, 'mora')}
+                      style={{
+                        display: 'inline-block',
+                        background: '#25D366',
+                        color: 'white',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      💬 WhatsApp
+                    </button>
                   </div>
                 );
               })}
@@ -1330,7 +1427,280 @@ const SistemaInversiones = () => {
   return (
     <div>
       {vistaActual === 'login' && <LoginView />}
-      {vistaActual === 'home' && usuarioActual && <HomeView />}
+      {vistaActual === 'home' && usuarioActual && !usuarioActual.esAdmin && <HomeView />}
+      {vistaActual === 'home' && usuarioActual && usuarioActual.esAdmin && <AdminView />}
+    </div>
+  );
+};
+
+const AdminView = () => {
+  const [vendedoras, setVendedoras] = useState([
+    { id: 1, nombre: 'Carolina', pin: '1234', color: '#ef4444', capitalDisponible: 2500000 },
+    { id: 2, nombre: 'Patricia', pin: '5678', color: '#3b82f6', capitalDisponible: 3200000 }
+  ]);
+
+  const [vistaAdmin, setVistaAdmin] = useState('dashboard');
+  const [vendedoraSeleccionada, setVendedoraSeleccionada] = useState(null);
+
+  // Datos globales desde el componente padre
+  const todosClientes = React.useContext ? [] : []; // Placeholder
+  const todosPrestamos = React.useContext ? [] : []; // Placeholder
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(value);
+  };
+
+  const totalCapitalEnCalle = vendedoras.reduce((sum, v) => {
+    // Aquí iría la lógica real de préstamos por vendedora
+    return sum + 1000000; // Placeholder
+  }, 0);
+
+  const totalInteresesGenerados = 500000; // Placeholder
+  const miRetiro = totalInteresesGenerados * 0.10;
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
+      {/* Header Admin */}
+      <div style={{
+        background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+        color: 'white',
+        padding: '24px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+      }}>
+        <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>👨‍💼 Panel Admin</h1>
+        <p style={{ fontSize: '14px', opacity: 0.9, margin: '4px 0 0 0' }}>
+          Vista general del negocio
+        </p>
+      </div>
+
+      {/* Resumen Global */}
+      <div style={{ padding: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+            color: 'white',
+            padding: '20px',
+            borderRadius: '16px',
+            boxShadow: '0 4px 12px rgba(59,130,246,0.3)'
+          }}>
+            <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '4px' }}>Capital Total en Calle</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{formatCurrency(totalCapitalEnCalle)}</div>
+          </div>
+
+            <div style={{
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: 'white',
+            padding: '20px',
+            borderRadius: '16px',
+            boxShadow: '0 4px 12px rgba(16,185,129,0.3)'
+          }}>
+            <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '4px' }}>Mi Retiro (10%)</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{formatCurrency(miRetiro)}</div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', overflowX: 'auto' }}>
+          <button
+            onClick={() => setVistaAdmin('dashboard')}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              border: 'none',
+              background: vistaAdmin === 'dashboard' ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : 'white',
+              color: vistaAdmin === 'dashboard' ? 'white' : '#6b7280',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            📊 Dashboard
+          </button>
+          <button
+            onClick={() => setVistaAdmin('vendedoras')}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              border: 'none',
+              background: vistaAdmin === 'vendedoras' ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : 'white',
+              color: vistaAdmin === 'vendedoras' ? 'white' : '#6b7280',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            👥 Vendedoras
+          </button>
+          <button
+            onClick={() => setVistaAdmin('finanzas')}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              border: 'none',
+              background: vistaAdmin === 'finanzas' ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : 'white',
+              color: vistaAdmin === 'finanzas' ? 'white' : '#6b7280',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            💰 Finanzas
+          </button>
+        </div>
+
+        {/* Vista Dashboard */}
+        {vistaAdmin === 'dashboard' && (
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Resumen General</h2>
+            
+            <div style={{ background: 'white', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px' }}>Estado del Negocio</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '12px', color: '#6b7280' }}>Vendedoras Activas</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{vendedoras.length}</div>
+                </div>
+                <div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '12px', color: '#6b7280' }}>Total Clientes</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold' }}>5</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: 'white', borderRadius: '16px', padding: '20px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px' }}>Distribución de Intereses</h3>
+              <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid #e5e7eb' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                  <span>65% Reinversión</span>
+                  <strong>{formatCurrency(totalInteresesGenerados * 0.65)}</strong>
+                </div>
+              </div>
+              <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid #e5e7eb' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                  <span>25% Vendedoras</span>
+                  <strong>{formatCurrency(totalInteresesGenerados * 0.25)}</strong>
+                </div>
+              </div>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                  <span style={{ fontWeight: 'bold' }}>10% Tu Retiro</span>
+                  <strong style={{ color: '#10b981' }}>{formatCurrency(miRetiro)}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Vista Vendedoras */}
+        {vistaAdmin === 'vendedoras' && (
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Mis Vendedoras</h2>
+            
+            {vendedoras.map(v => (
+              <div
+                key={v.id}
+                style={{
+                  background: 'white',
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    background: v.color,
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    marginRight: '12px'
+                  }}>
+                    {v.nombre.charAt(0)}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{v.nombre}</div>
+                    <div style={{ fontSize: '14px', color: '#6b7280' }}>PIN: {v.pin}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ background: '#dbeafe', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '12px', color: '#1e40af' }}>Capital Disponible</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e40af' }}>
+                      {formatCurrency(v.capitalDisponible)}
+                    </div>
+                  </div>
+                  <div style={{ background: '#d1fae5', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '12px', color: '#065f46' }}>Clientes Activos</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#065f46' }}>
+                      3
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Vista Finanzas */}
+        {vistaAdmin === 'finanzas' && (
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Control Financiero</h2>
+            
+            <div style={{ background: 'white', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#10b981' }}>
+                💰 Tu Retiro Acumulado
+              </h3>
+              <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#10b981', marginBottom: '8px' }}>
+                {formatCurrency(miRetiro * 4)} {/* Simulando 4 semanas */}
+              </div>
+              <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                Basado en intereses generados
+              </div>
+            </div>
+
+            <div style={{ background: 'white', borderRadius: '16px', padding: '20px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px' }}>Histórico Mensual</h3>
+              <div style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center', padding: '40px' }}>
+                Próximamente: Gráficas y reportes detallados
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Botón Cerrar Sesión */}
+        <button
+          onClick={() => {
+            if (confirm('¿Cerrar sesión?')) {
+              window.location.reload();
+            }
+          }}
+          style={{
+            width: '100%',
+            padding: '16px',
+            background: '#f3f4f6',
+            color: '#6b7280',
+            border: 'none',
+            borderRadius: '12px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            marginTop: '20px',
+            cursor: 'pointer'
+          }}
+        >
+          🚪 Cerrar Sesión
+        </button>
+      </div>
     </div>
   );
 };
