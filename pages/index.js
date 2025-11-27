@@ -18,7 +18,7 @@ const SistemaInversiones = () => {
   });
   const [montoPrestamo, setMontoPrestamo] = useState('');
 
-  const [vendedoras] = useState([
+  const [vendedoras, setVendedoras] = useState([
     { id: 1, nombre: 'Carolina', pin: '1234', color: '#ef4444', capitalDisponible: 2500000 },
     { id: 2, nombre: 'Patricia', pin: '5678', color: '#3b82f6', capitalDisponible: 3200000 }
   ]);
@@ -134,12 +134,18 @@ const SistemaInversiones = () => {
 
     setPrestamos([...prestamos, prestamo]);
     
-    // Actualizar capital disponible
-    const vendedoraActualizada = vendedoras.find(v => v.id === usuarioActual.id);
-    if (vendedoraActualizada) {
-      vendedoraActualizada.capitalDisponible -= monto;
-      setUsuarioActual({...usuarioActual, capitalDisponible: vendedoraActualizada.capitalDisponible});
-    }
+    // Actualizar capital disponible de la vendedora
+    const nuevasVendedoras = vendedoras.map(v => {
+      if (v.id === usuarioActual.id) {
+        return { ...v, capitalDisponible: v.capitalDisponible - monto };
+      }
+      return v;
+    });
+    setVendedoras(nuevasVendedoras);
+    
+    // Actualizar usuario actual
+    const vendedoraActualizada = nuevasVendedoras.find(v => v.id === usuarioActual.id);
+    setUsuarioActual(vendedoraActualizada);
 
     alert('¡Préstamo creado exitosamente!');
     cerrarModal();
