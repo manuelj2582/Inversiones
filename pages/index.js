@@ -21,7 +21,8 @@ const SistemaInversiones = () => {
 
   const [vendedoras, setVendedoras] = useState([
     { id: 1, nombre: 'Carolina', pin: '1234', color: '#ef4444', capitalDisponible: 2500000 },
-    { id: 2, nombre: 'Patricia', pin: '5678', color: '#3b82f6', capitalDisponible: 3200000 }
+    { id: 2, nombre: 'Patricia', pin: '5678', color: '#3b82f6', capitalDisponible: 3200000 },
+    { id: 'admin', nombre: 'Admin', pin: '0000', color: '#8b5cf6', esAdmin: true }
   ]);
 
   const [clientes, setClientes] = useState([
@@ -1329,9 +1330,367 @@ const SistemaInversiones = () => {
   return (
     <div>
       {vistaActual === 'login' && <LoginView />}
-      {vistaActual === 'home' && usuarioActual && <HomeView />}
+      {vistaActual === 'home' && usuarioActual && !usuarioActual.esAdmin && <HomeView />}
+      {vistaActual === 'home' && usuarioActual && usuarioActual.esAdmin && <AdminView />}
     </div>
   );
 };
+
+const AdminView = () => {
+  const [tabActual, setTabActual] = useState('dashboard');
+
+  const vendedorasData = vendedoras.filter(v => !v.esAdmin);
+  
+  const todosClientes = clientes;
+  const todosPrestamos = prestamos;
+
+  const calcularEstadisticasGenerales = () => {
+    const totalPrestado = todosPrestamos
+      .filter(p => p.estado === 'activo')
+      .reduce((sum, p) => sum + p.valorTotal, 0);
+
+    const totalPorRecaudar = todosPrestamos
+      .filter(p => p.estado === 'activo')
+      .reduce((sum, p) => sum + (p.cuotaDiaria * (p.totalCuotas - p.cuotasPagadas)), 0);
+
+    const interesesGenerados = todosPrestamos
+      .filter(p => p.estado === 'activo')
+      .reduce((sum, p) => {
+        const totalRecaudado = p.cuotaDiaria * p.cuotasPagadas;
+        return sum + Math.max(0, totalRecaudado - p.valorTotal);
+      }, 0);
+
+    const capitalTotal = vendedorasData.reduce((sum, v) => sum + v.capitalDisponible, 0) + totalPrestado;
+
+    return {
+      capitalTotal,
+      totalPrestado,
+      totalPorRecaudar,
+      interesesGenerados,
+      miRetiro: interesesGenerados * 0.10,
+      pagoTrabajadoras: interesesGenerados * 0.25,
+      reinversion: interesesGenerados * 0.65
+    };
+  };
+
+  const stats = calcularEstadisticasGenerales();
+
+  const getEstadisticasPorVendedora = (vendedoraId) => {
+    const clientesVendedora = todosClientes.filter(c => c.vendedoraId === vendedoraId);
+    const prestamosVendedora = todosPrestamos.filter(p => p.vendedoraId === vendedoraId && p.estado === 'activo');
+
+    const totalPrestado = prestamosVendedora.reduce((sum, p) => sum + p.valorTotal, 0);
+    const interesesGenerados = prestamosVendedora.reduce((sum, p) => {
+      const totalRecaudado = p.cuotaDiaria * p.cuotasPagadas;
+      return sum + Math.max(0, totalRecaudado - p.valorTotal);
+    }, 0);
+
+    return {
+      clientes: clientesVendedora.length,
+      prestamosActivos: prestamosVendedora.length,
+      totalPrestado,
+      interesesGenerados,
+      suComision: interesesGenerados * 0.25
+    };
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f9fafb', paddingBottom: '80px' }}>
+      {/* Header Admin */}
+      <div style={{
+        background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+        color: 'white',
+        padding: '24px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>👨‍💼 Panel Admin</h2>
+            <p style={{ fontSize: '14px', opacity: 0.9, margin: '4px 0 0 0' }}>
+              {new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              if (confirm('¿Cerrar sesión?')) {
+                setUsuarioActual(null);
+                setVistaActual('login');
+              }
+            }}
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '48px',
+              height: '48px',
+              cursor: 'pointer',
+              fontSize: '24px'
+            }}
+          >
+            👤
+          </button>
+        </div>
+
+        {/* Resumen rápido */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{
+            background: 'rgba(255,255,255,0.2)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '12px',
+            padding: '16px'
+          }}>
+            <div style={{ fontSize: '12px', opacity: 0.9 }}>Capital Total</div>
+            <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{formatCurrency(stats.capitalTotal)}</div>
+          </div>
+          <div style={{
+            background: 'rgba(255,255,255,0.2)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '12px',
+            padding: '16px'
+          }}>
+            <div style={{ fontSize: '12px', opacity: 0.9 }}>Mi Retiro (10%)</div>
+            <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{formatCurrency(stats.miRetiro)}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ background: 'white', padding: '16px', display: 'flex', gap: '8px', overflowX: 'auto', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+        <button
+          onClick={() => setTabActual('dashboard')}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '12px',
+            border: 'none',
+            fontWeight: 'bold',
+            background: tabActual === 'dashboard' ? '#8b5cf6' : '#f3f4f6',
+            color: tabActual === 'dashboard' ? 'white' : '#6b7280',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          📊 Dashboard
+        </button>
+        <button
+          onClick={() => setTabActual('vendedoras')}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '12px',
+            border: 'none',
+            fontWeight: 'bold',
+            background: tabActual === 'vendedoras' ? '#8b5cf6' : '#f3f4f6',
+            color: tabActual === 'vendedoras' ? 'white' : '#6b7280',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          👥 Vendedoras
+        </button>
+        <button
+          onClick={() => setTabActual('finanzas')}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '12px',
+            border: 'none',
+            fontWeight: 'bold',
+            background: tabActual === 'finanzas' ? '#8b5cf6' : '#f3f4f6',
+            color: tabActual === 'finanzas' ? 'white' : '#6b7280',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          💰 Finanzas
+        </button>
+      </div>
+
+      {/* Contenido según tab */}
+      <div style={{ padding: '20px' }}>
+        {tabActual === 'dashboard' && (
+          <div>
+            <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Resumen General</h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>Total Prestado</div>
+                <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>
+                  {formatCurrency(stats.totalPrestado)}
+                </div>
+              </div>
+              <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>Por Recaudar</div>
+                <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#f59e0b' }}>
+                  {formatCurrency(stats.totalPorRecaudar)}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
+              <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px' }}>📈 Intereses Totales Generados</h4>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#8b5cf6', marginBottom: '16px' }}>
+                {formatCurrency(stats.interesesGenerados)}
+              </div>
+              <div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '14px' }}>65% Reinversión:</span>
+                  <strong style={{ color: '#10b981' }}>{formatCurrency(stats.reinversion)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '14px' }}>25% Trabajadoras:</span>
+                  <strong style={{ color: '#ef4444' }}>{formatCurrency(stats.pagoTrabajadoras)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '2px solid #e5e7eb' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 'bold' }}>10% Tu Retiro:</span>
+                  <strong style={{ color: '#8b5cf6', fontSize: '18px' }}>{formatCurrency(stats.miRetiro)}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px' }}>Estadísticas Generales</h4>
+              <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>
+                Total clientes: <strong>{todosClientes.length}</strong>
+              </div>
+              <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>
+                Préstamos activos: <strong>{todosPrestamos.filter(p => p.estado === 'activo').length}</strong>
+              </div>
+              <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                Vendedoras: <strong>{vendedorasData.length}</strong>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tabActual === 'vendedoras' && (
+          <div>
+            <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Rendimiento por Vendedora</h3>
+            
+            {vendedorasData.map(vendedora => {
+              const stats = getEstadisticasPorVendedora(vendedora.id);
+              return (
+                <div
+                  key={vendedora.id}
+                  style={{
+                    background: 'white',
+                    borderRadius: '16px',
+                    padding: '20px',
+                    marginBottom: '16px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    borderLeft: `6px solid ${vendedora.color}`
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      background: vendedora.color,
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                      fontWeight: 'bold',
+                      marginRight: '12px'
+                    }}>
+                      {vendedora.nombre.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{vendedora.nombre}</h4>
+                      <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                        Capital: {formatCurrency(vendedora.capitalDisponible)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>Clientes</div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{stats.clientes}</div>
+                    </div>
+                    <div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>Préstamos</div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{stats.prestamosActivos}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#dbeafe', padding: '12px', borderRadius: '8px', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '12px', color: '#1e40af' }}>Total Prestado</div>
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e40af' }}>
+                      {formatCurrency(stats.totalPrestado)}
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#dcfce7', padding: '12px', borderRadius: '8px', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '12px', color: '#166534' }}>Intereses Generados</div>
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#166534' }}>
+                      {formatCurrency(stats.interesesGenerados)}
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#fef3c7', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '12px', color: '#92400e' }}>Su Comisión (25%)</div>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#92400e' }}>
+                      {formatCurrency(stats.suComision)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tabActual === 'finanzas' && (
+          <div>
+            <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Control Financiero</h3>
+            
+            <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '16px' }}>
+              <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px', color: '#8b5cf6' }}>
+                💰 Tu Retiro Disponible
+              </h4>
+              <div style={{ fontSize: '40px', fontWeight: 'bold', color: '#8b5cf6', marginBottom: '8px' }}>
+                {formatCurrency(stats.miRetiro)}
+              </div>
+              <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                10% de {formatCurrency(stats.interesesGenerados)} en intereses generados
+              </div>
+            </div>
+
+            <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '16px' }}>
+              <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px', color: '#ef4444' }}>
+                👥 Pago a Trabajadoras
+              </h4>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ef4444', marginBottom: '16px' }}>
+                {formatCurrency(stats.pagoTrabajadoras)}
+              </div>
+              {vendedorasData.map(v => {
+                const statsV = getEstadisticasPorVendedora(v.id);
+                return (
+                  <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#f3f4f6', borderRadius: '8px', marginBottom: '8px' }}>
+                    <span style={{ fontWeight: '600' }}>{v.nombre}:</span>
+                    <span style={{ fontWeight: 'bold', color: '#ef4444' }}>{formatCurrency(statsV.suComision)}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px', color: '#10b981' }}>
+                🔄 Reinversión Automática
+              </h4>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981', marginBottom: '8px' }}>
+                {formatCurrency(stats.reinversion)}
+              </div>
+              <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                65% se reinvierte automáticamente en el capital de cada vendedora
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+return (
 
 export default SistemaInversiones;
