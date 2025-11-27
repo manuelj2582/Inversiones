@@ -191,7 +191,8 @@ const SistemaInversiones = () => {
         mensaje = `Hola ${cliente.nombre}, ¿cómo estás?`;
     }
     
-    const url = `https://wa.me/57${cliente.telefono}?text=${encodeURIComponent(mensaje)}`;
+    // Cambiar a +58 para Venezuela
+    const url = `https://wa.me/58${cliente.telefono}?text=${encodeURIComponent(mensaje)}`;
     window.open(url, '_blank');
   };
 
