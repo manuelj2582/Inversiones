@@ -165,6 +165,24 @@ const SistemaInversiones = () => {
     .filter(c => c.nombre.toLowerCase().includes(busquedaCliente.toLowerCase()) || 
                  c.cedula.includes(busquedaCliente));
 
+  const getDiasAtraso = (clienteId) => {
+    const prestamo = getPrestamoActivo(clienteId);
+    if (!prestamo || !prestamo.ultimoPago) return 0;
+    
+    const hoy = new Date();
+    const ultimoPago = new Date(prestamo.ultimoPago);
+    const diffTime = Math.abs(hoy - ultimoPago);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const getEstadoMora = (clienteId) => {
+    const dias = getDiasAtraso(clienteId);
+    if (dias === 0) return 'al-dia';
+    if (dias === 1) return 'alerta';
+    return 'mora';
+  };
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -503,8 +521,14 @@ const SistemaInversiones = () => {
             <div
               key={cliente.id}
               style={{
-                background: pagado ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'white',
-                border: pagado ? '2px solid #10b981' : '2px solid #e5e7eb',
+                background: pagado ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 
+                           getEstadoMora(cliente.id) === 'mora' ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' :
+                           getEstadoMora(cliente.id) === 'alerta' ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' :
+                           'white',
+                border: pagado ? '2px solid #10b981' : 
+                       getEstadoMora(cliente.id) === 'mora' ? '2px solid #ef4444' :
+                       getEstadoMora(cliente.id) === 'alerta' ? '2px solid #f59e0b' :
+                       '2px solid #e5e7eb',
                 borderRadius: '16px',
                 marginBottom: '16px',
                 overflow: 'hidden'
@@ -517,19 +541,60 @@ const SistemaInversiones = () => {
                     <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>📍 {cliente.zona}</p>
                     <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>📞 {cliente.telefono}</p>
                   </div>
-                  {pagado && (
-                    <div style={{
-                      background: '#10b981',
-                      color: 'white',
-                      padding: '8px 12px',
-                      borderRadius: '20px',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      height: 'fit-content'
-                    }}>
-                      ✓ PAGÓ
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                    {pagado && (
+                      <div style={{
+                        background: '#10b981',
+                        color: 'white',
+                        padding: '8px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        ✓ PAGÓ
+                      </div>
+                    )}
+                    {!pagado && getEstadoMora(cliente.id) === 'mora' && (
+                      <div style={{
+                        background: '#ef4444',
+                        color: 'white',
+                        padding: '8px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        🚨 MORA {getDiasAtraso(cliente.id)} días
+                      </div>
+                    )}
+                    {!pagado && getEstadoMora(cliente.id) === 'alerta' && (
+                      <div style={{
+                        background: '#f59e0b',
+                        color: 'white',
+                        padding: '8px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        ⚠️ 1 día atraso
+                      </div>
+                    )}
+                    {!pagado && (
+                      <a 
+                        href={`tel:${cliente.telefono}`}
+                        style={{
+                          background: '#3b82f6',
+                          color: 'white',
+                          padding: '8px 12px',
+                          borderRadius: '20px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        📞 Llamar
+                      </a>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{
@@ -718,12 +783,14 @@ const SistemaInversiones = () => {
                         value={nuevoCliente.nombre}
                         onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})}
                         placeholder="Juan Pérez"
+                        autoComplete="off"
                         style={{
                           width: '100%',
                           padding: '12px',
                           border: '2px solid #e5e7eb',
                           borderRadius: '8px',
-                          fontSize: '16px'
+                          fontSize: '16px',
+                          outline: 'none'
                         }}
                       />
                     </div>
@@ -737,12 +804,14 @@ const SistemaInversiones = () => {
                         value={nuevoCliente.cedula}
                         onChange={(e) => setNuevoCliente({...nuevoCliente, cedula: e.target.value})}
                         placeholder="1234567890"
+                        autoComplete="off"
                         style={{
                           width: '100%',
                           padding: '12px',
                           border: '2px solid #e5e7eb',
                           borderRadius: '8px',
-                          fontSize: '16px'
+                          fontSize: '16px',
+                          outline: 'none'
                         }}
                       />
                     </div>
@@ -756,12 +825,14 @@ const SistemaInversiones = () => {
                         value={nuevoCliente.telefono}
                         onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})}
                         placeholder="3001234567"
+                        autoComplete="off"
                         style={{
                           width: '100%',
                           padding: '12px',
                           border: '2px solid #e5e7eb',
                           borderRadius: '8px',
-                          fontSize: '16px'
+                          fontSize: '16px',
+                          outline: 'none'
                         }}
                       />
                     </div>
@@ -775,12 +846,14 @@ const SistemaInversiones = () => {
                         value={nuevoCliente.zona}
                         onChange={(e) => setNuevoCliente({...nuevoCliente, zona: e.target.value})}
                         placeholder="Centro"
+                        autoComplete="off"
                         style={{
                           width: '100%',
                           padding: '12px',
                           border: '2px solid #e5e7eb',
                           borderRadius: '8px',
-                          fontSize: '16px'
+                          fontSize: '16px',
+                          outline: 'none'
                         }}
                       />
                     </div>
@@ -794,12 +867,14 @@ const SistemaInversiones = () => {
                         value={nuevoCliente.direccion}
                         onChange={(e) => setNuevoCliente({...nuevoCliente, direccion: e.target.value})}
                         placeholder="Calle 123 #45-67"
+                        autoComplete="off"
                         style={{
                           width: '100%',
                           padding: '12px',
                           border: '2px solid #e5e7eb',
                           borderRadius: '8px',
-                          fontSize: '16px'
+                          fontSize: '16px',
+                          outline: 'none'
                         }}
                       />
                     </div>
