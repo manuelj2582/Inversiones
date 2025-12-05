@@ -1,214 +1,256 @@
 import React, { useState } from 'react';
 import TarjetaCliente from './TarjetaCliente';
 import ModalPrestamo from './ModalPrestamo';
-import FormNuevoCliente from './FormNuevoCliente';
 
-const HomeView = ({
-  clientes,
+export default function HomeView({ 
+  usuarioActual, 
+  clientes, 
+  prestamos, 
   vendedoras,
-  vendedoraActiva,
-  onAgregarCliente,
-  onAgregarPrestamo,
-  onActualizarCliente,
-  onEliminarCliente,
-  onCambiarVendedora,
-}) => {
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  onRegistrarPago, 
+  onCrearCliente,
+  onCrearPrestamo,
+  onCerrarSesion,
+  formatCurrency,
+  firebaseOperations 
+}) {
+  const [busqueda, setBusqueda] = useState('');
+  const [filtro, setFiltro] = useState('pendientes');
   const [mostrarModalPrestamo, setMostrarModalPrestamo] = useState(false);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
-  const [filtroEstado, setFiltroEstado] = useState('activos'); // 'activos', 'pagados', 'todos'
 
-  // Filtrar clientes según estado
-  const clientesFiltrados = clientes.filter((cliente) => {
-    if (filtroEstado === 'activos') {
-      return cliente.prestamos && cliente.prestamos.some((p) => p.estado === 'activo');
+  const getPrestamoActivo = (clienteId) => {
+    return prestamos.find(p => p.clienteId === clienteId && p.estado === 'activo');
+  };
+
+  const yaPagoHoy = (clienteId) => {
+    const hoy = new Date().toISOString().split('T')[0];
+    const prestamo = getPrestamoActivo(clienteId);
+    return prestamo && prestamo.ultimoPago === hoy;
+  };
+
+  const getDiasAtraso = (clienteId) => {
+    const prestamo = getPrestamoActivo(clienteId);
+    if (!prestamo || !prestamo.ultimoPago) return 0;
+    
+    const hoy = new Date();
+    const ultimoPago = new Date(prestamo.ultimoPago);
+    const diffTime = Math.abs(hoy - ultimoPago);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const misClientes = clientes.filter(c => c.vendedoraId === usuarioActual?.id);
+  
+  const clientesFiltrados = misClientes.filter(c => {
+    const prestamo = getPrestamoActivo(c.id);
+    if (!prestamo) return false;
+    
+    const cumpleBusqueda = c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+                          c.cedula?.includes(busqueda) ||
+                          c.zona?.toLowerCase().includes(busqueda.toLowerCase());
+    
+    if (filtro === 'pendientes') {
+      return cumpleBusqueda && !yaPagoHoy(c.id) && prestamo.cuotasPagadas < prestamo.totalCuotas;
+    } else if (filtro === 'cobrados') {
+      return cumpleBusqueda && yaPagoHoy(c.id);
     }
-    if (filtroEstado === 'pagados') {
-      return cliente.prestamos && cliente.prestamos.some((p) => p.estado === 'pagado');
-    }
-    return true; // 'todos'
+    return cumpleBusqueda && prestamo.cuotasPagadas < prestamo.totalCuotas;
   });
 
-  // Calcular estadísticas
-  const calcularEstadisticas = () => {
-    let totalPrestamosActivos = 0;
-    let totalCapital = 0;
-    let totalInteres = 0;
-    let totalRecaudado = 0;
-
-    clientes.forEach((cliente) => {
-      if (cliente.prestamos) {
-        cliente.prestamos.forEach((prestamo) => {
-          if (prestamo.estado === 'activo') {
-            totalPrestamosActivos += 1;
-            totalCapital += prestamo.monto;
-            totalInteres += prestamo.interes;
-          } else if (prestamo.estado === 'pagado') {
-            totalRecaudado += prestamo.monto + prestamo.interes;
-          }
-        });
+  const estadisticas = {
+    pendientes: misClientes.filter(c => {
+      const prestamo = getPrestamoActivo(c.id);
+      return prestamo && !yaPagoHoy(c.id) && prestamo.cuotasPagadas < prestamo.totalCuotas;
+    }).length,
+    cobradosHoy: misClientes.filter(c => yaPagoHoy(c.id)).length,
+    totalRecaudarHoy: misClientes.reduce((sum, c) => {
+      const prestamo = getPrestamoActivo(c.id);
+      if (prestamo && !yaPagoHoy(c.id) && prestamo.cuotasPagadas < prestamo.totalCuotas) {
+        return sum + prestamo.cuotaDiaria;
       }
-    });
-
-    return {
-      totalPrestamosActivos,
-      totalCapital,
-      totalInteres,
-      totalRecaudado,
-      totalClientes: clientes.length,
-    };
-  };
-
-  const estadisticas = calcularEstadisticas();
-
-  const manejarClickPrestamo = (cliente) => {
-    setClienteSeleccionado(cliente);
-    setMostrarModalPrestamo(true);
-  };
-
-  const manejarConfirmarPrestamo = async (datosPrestamo) => {
-    if (clienteSeleccionado) {
-      await onAgregarPrestamo(clienteSeleccionado.id, datosPrestamo);
-      setMostrarModalPrestamo(false);
-      setClienteSeleccionado(null);
-    }
-  };
-
-  const manejarAgregarCliente = async (datosCliente) => {
-    await onAgregarCliente(datosCliente);
-    setMostrarFormulario(false);
+      return sum;
+    }, 0),
+    recaudadoHoy: misClientes.reduce((sum, c) => {
+      const prestamo = getPrestamoActivo(c.id);
+      if (prestamo && yaPagoHoy(c.id)) {
+        return sum + prestamo.cuotaDiaria;
+      }
+      return sum;
+    }, 0)
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen p-4">
-      {/* Header con selector de vendedora */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold text-gray-800">Sistema Inversiones</h1>
-          <div className="flex gap-3">
-            {vendedoras.map((vendedora) => (
-              <button
-                key={vendedora.id}
-                onClick={() => onCambiarVendedora(vendedora.id)}
-                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                  vendedoraActiva === vendedora.id
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                {vendedora.nombre} ({vendedora.pin})
-              </button>
-            ))}
+    <div style={{ minHeight: '100vh', background: '#f9fafb', paddingBottom: '100px' }}>
+      {/* Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
+        color: 'white',
+        padding: '24px',
+        borderRadius: '0 0 24px 24px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        marginBottom: '24px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Hola, {usuarioActual?.nombre}! 👋</h2>
+            <p style={{ fontSize: '14px', opacity: 0.9, margin: '4px 0 0 0' }}>
+              {new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
           </div>
+          <button
+            onClick={() => {
+              if (confirm('¿Cerrar sesión?')) {
+                onCerrarSesion();
+              }
+            }}
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '48px',
+              height: '48px',
+              cursor: 'pointer',
+              fontSize: '24px'
+            }}
+          >
+            👤
+          </button>
         </div>
 
-        {/* Estadísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
-          <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-            <p className="text-gray-600 text-sm font-semibold">Total Clientes</p>
-            <p className="text-2xl font-bold text-blue-600">{estadisticas.totalClientes}</p>
-          </div>
-
-          <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
-            <p className="text-gray-600 text-sm font-semibold">Préstamos Activos</p>
-            <p className="text-2xl font-bold text-green-600">{estadisticas.totalPrestamosActivos}</p>
-          </div>
-
-          <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
-            <p className="text-gray-600 text-sm font-semibold">Capital Activo</p>
-            <p className="text-2xl font-bold text-purple-600">
-              ${estadisticas.totalCapital.toLocaleString()}
-            </p>
-          </div>
-
-          <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500">
-            <p className="text-gray-600 text-sm font-semibold">Interés Activo</p>
-            <p className="text-2xl font-bold text-orange-600">
-              ${estadisticas.totalInteres.toLocaleString()}
-            </p>
-          </div>
-
-          <div className="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-500">
-            <p className="text-gray-600 text-sm font-semibold">Recaudado</p>
-            <p className="text-2xl font-bold text-indigo-600">
-              ${estadisticas.totalRecaudado.toLocaleString()}
-            </p>
-          </div>
+        <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
+          <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '4px' }}>💰 Capital Disponible</div>
+          <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{formatCurrency(usuarioActual?.capitalDisponible || 0)}</div>
         </div>
-      </div>
 
-      {/* Controles */}
-      <div className="flex gap-3 mb-6 flex-wrap">
-        <button
-          onClick={() => setMostrarFormulario(true)}
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition-all shadow-md"
-        >
-          ➕ Nuevo Cliente
-        </button>
-
-        <div className="flex gap-2 ml-auto">
-          {['activos', 'pagados', 'todos'].map((estado) => (
-            <button
-              key={estado}
-              onClick={() => setFiltroEstado(estado)}
-              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                filtroEstado === estado
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-blue-600'
-              }`}
-            >
-              {estado.charAt(0).toUpperCase() + estado.slice(1)}
-            </button>
-          ))}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{
+            background: 'rgba(255,255,255,0.2)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '12px',
+            padding: '16px'
+          }}>
+            <div style={{ fontSize: '12px', opacity: 0.9 }}>Pendientes Hoy</div>
+            <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{estadisticas.pendientes}</div>
+            <div style={{ fontSize: '12px', opacity: 0.8 }}>{formatCurrency(estadisticas.totalRecaudarHoy)}</div>
+          </div>
+          <div style={{
+            background: 'rgba(255,255,255,0.2)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '12px',
+            padding: '16px'
+          }}>
+            <div style={{ fontSize: '12px', opacity: 0.9 }}>Recaudados Hoy</div>
+            <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{estadisticas.cobradosHoy}</div>
+            <div style={{ fontSize: '12px', opacity: 0.8 }}>{formatCurrency(estadisticas.recaudadoHoy)}</div>
+          </div>
         </div>
       </div>
 
-      {/* Grid de clientes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {clientesFiltrados.length > 0 ? (
-          clientesFiltrados.map((cliente) => (
-            <TarjetaCliente
-              key={cliente.id}
-              cliente={cliente}
-              onAgregarPrestamo={() => manejarClickPrestamo(cliente)}
-              onActualizar={() => onActualizarCliente(cliente.id)}
-              onEliminar={() => onEliminarCliente(cliente.id)}
-            />
-          ))
-        ) : (
-          <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500 text-lg">No hay clientes para mostrar</p>
-            <button
-              onClick={() => setMostrarFormulario(true)}
-              className="mt-4 text-blue-600 hover:text-blue-800 font-semibold underline"
-            >
-              Crear el primer cliente
-            </button>
+      {/* Búsqueda */}
+      <div style={{ padding: '0 16px', marginBottom: '16px' }}>
+        <input
+          type="text"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="🔍 Buscar cliente..."
+          style={{
+            width: '100%',
+            padding: '16px',
+            fontSize: '16px',
+            border: '2px solid #e5e7eb',
+            borderRadius: '16px',
+            outline: 'none'
+          }}
+        />
+      </div>
+
+      {/* Filtros */}
+      <div style={{ padding: '0 16px', marginBottom: '16px', display: 'flex', gap: '8px', overflowX: 'auto' }}>
+        {['pendientes', 'cobrados', 'todos'].map(f => (
+          <button
+            key={f}
+            onClick={() => setFiltro(f)}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '20px',
+              border: 'none',
+              fontWeight: '600',
+              whiteSpace: 'nowrap',
+              background: filtro === f ? '#10b981' : 'white',
+              color: filtro === f ? 'white' : '#6b7280',
+              cursor: 'pointer',
+              border: filtro === f ? 'none' : '2px solid #e5e7eb'
+            }}
+          >
+            {f === 'pendientes' ? '⏰ Pendientes' : f === 'cobrados' ? '✓ Cobrados' : '📦 Todos'}
+          </button>
+        ))}
+      </div>
+
+      {/* Tarjetas de clientes */}
+      <div style={{ padding: '0 16px' }}>
+        {clientesFiltrados.map(cliente => (
+          <TarjetaCliente
+            key={cliente.id}
+            cliente={cliente}
+            prestamo={getPrestamoActivo(cliente.id)}
+            yaPagoHoy={yaPagoHoy(cliente.id)}
+            diasAtraso={getDiasAtraso(cliente.id)}
+            onRegistrarPago={onRegistrarPago}
+            formatCurrency={formatCurrency}
+          />
+        ))}
+
+        {clientesFiltrados.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '16px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📦</div>
+            <p style={{ color: '#6b7280' }}>No hay clientes para mostrar</p>
           </div>
         )}
       </div>
 
-      {/* Modales */}
-      {mostrarFormulario && (
-        <FormNuevoCliente
-          vendedoraActiva={vendedoraActiva}
-          onConfirmar={manejarAgregarCliente}
-          onCancelar={() => setMostrarFormulario(false)}
-        />
-      )}
+      {/* Botón flotante */}
+      <button
+        onClick={() => setMostrarModalPrestamo(true)}
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          width: '70px',
+          height: '70px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          color: 'white',
+          border: 'none',
+          fontSize: '32px',
+          cursor: 'pointer',
+          boxShadow: '0 8px 24px rgba(16,185,129,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100
+        }}
+      >
+        ➕
+      </button>
 
-      {mostrarModalPrestamo && clienteSeleccionado && (
+      {/* Modal */}
+      {mostrarModalPrestamo && (
         <ModalPrestamo
-          cliente={clienteSeleccionado}
-          onConfirmar={manejarConfirmarPrestamo}
-          onCancelar={() => {
-            setMostrarModalPrestamo(false);
-            setClienteSeleccionado(null);
-          }}
+          usuarioActual={usuarioActual}
+          clientes={misClientes}
+          prestamos={prestamos}
+          onCrearCliente={onCrearCliente}
+          onCrearPrestamo={onCrearPrestamo}
+          onCerrar={() => setMostrarModalPrestamo(false)}
+          formatCurrency={formatCurrency}
+          firebaseOperations={firebaseOperations}
+          vendedoras={vendedoras}
         />
       )}
     </div>
   );
-};
-
-export default HomeView;
+}
