@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { guardarCliente, guardarPrestamo, actualizarPrestamo, obtenerClientes, obtenerPrestamos, actualizarVendedora, obtenerVendedoras } from '../lib/firebase';
+import React, { useState } from 'react';
 
 const SistemaInversiones = () => {
   const [vistaActual, setVistaActual] = useState('login');
@@ -1459,9 +1458,26 @@ const SistemaInversiones = () => {
 
   return (
     <div>
-      {vistaActual === 'login' && <LoginView />}
-      {vistaActual === 'home' && usuarioActual && !usuarioActual.esAdmin && <HomeView />}
-      {vistaActual === 'home' && usuarioActual && usuarioActual.esAdmin && <AdminView />}
+      {cargando ? (
+        <div style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{ textAlign: 'center', color: 'white' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>Cargando datos...</div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {vistaActual === 'login' && <LoginView />}
+          {vistaActual === 'home' && usuarioActual && !usuarioActual.esAdmin && <HomeView />}
+          {vistaActual === 'home' && usuarioActual && usuarioActual.esAdmin && <AdminView />}
+        </>
+      )}
     </div>
   );
 };
