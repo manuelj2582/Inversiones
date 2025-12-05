@@ -111,22 +111,25 @@ export default function SistemaInversiones() {
     );
   }
 
-  if (vistaActual === 'home' && usuarioActual && !usuarioActual.esAdmin) {
-    return (
-      <HomeView
-        usuarioActual={usuarioActual}
-        clientes={clientes}
-        prestamos={prestamos}
-        vendedoras={vendedoras}
-        onRegistrarPago={handleRegistrarPago}
-        onCrearCliente={handleCrearCliente}
-        onCrearPrestamo={handleCrearPrestamo}
-        onCerrarSesion={() => setVistaActual('login')}
-        formatCurrency={formatCurrency}
-        firebaseOperations={firebaseOperations}
-      />
-    );
-  }
+ if (vistaActual === 'home' && usuarioActual && !usuarioActual.esAdmin) {
+  return (
+    <HomeView
+      usuarioActual={usuarioActual}
+      clientes={clientes}
+      prestamos={prestamos}
+      vendedoras={vendedoras}
+      onRegistrarPago={handleRegistrarPago}
+      onCrearCliente={handleCrearCliente}
+      onCrearPrestamo={handleCrearPrestamo}
+      onCerrarSesion={() => {
+        setUsuarioActual(null);
+        setVistaActual('login');
+      }}
+      formatCurrency={formatCurrency}
+      firebaseOperations={firebaseOperations}
+    />
+  );
+}
 
   return null;
 }
