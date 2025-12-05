@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { guardarCliente, guardarPrestamo, actualizarPrestamo, obtenerClientes, obtenerPrestamos, actualizarVendedora, obtenerVendedoras } from '../lib/firebase';
 
 const SistemaInversiones = () => {
   const [vistaActual, setVistaActual] = useState('login');
