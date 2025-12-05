@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase/config';
+import { db } from '../lib/firebaseClient';
 import {
   collection,
   addDoc,
@@ -46,11 +46,11 @@ const Home = () => {
       const snapshot = await getDocs(q);
 
       const clientesData = [];
-      for (const doc of snapshot.docs) {
-        const cliente = { id: doc.id, ...doc.data() };
+      for (const clienteDoc of snapshot.docs) {
+        const cliente = { id: clienteDoc.id, ...clienteDoc.data() };
 
         // Cargar préstamos del cliente
-        const prestamosRef = collection(db, 'clientes', doc.id, 'prestamos');
+        const prestamosRef = collection(db, 'clientes', clienteDoc.id, 'prestamos');
         const prestamosSnapshot = await getDocs(prestamosRef);
         cliente.prestamos = prestamosSnapshot.docs.map((prestamoDoc) => ({
           id: prestamoDoc.id,
