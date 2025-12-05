@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 
-export default function ModalPrestamo({ 
-  mostrar, 
-  onCerrar, 
-  clientes, 
+export default function ModalPrestamo({
   usuarioActual,
+  clientes,
+  prestamos,
   onCrearCliente,
   onCrearPrestamo,
-  formatCurrency 
+  onCerrar,
+  formatCurrency,
+  firebaseOperations
 }) {
   const [paso, setPaso] = useState(1);
-  const [busquedaCliente, setBusquedaCliente] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
-  const [montoPrestamo, setMontoPrestamo] = useState('');
+  const [busquedaCliente, setBusquedaCliente] = useState('');
   const [nuevoCliente, setNuevoCliente] = useState({
     nombre: '',
     cedula: '',
@@ -20,41 +20,31 @@ export default function ModalPrestamo({
     zona: '',
     direccion: ''
   });
+  const [montoPrestamo, setMontoPrestamo] = useState('');
 
-  const clientesSinPrestamo = clientes.filter(c => 
-    c.vendedoraId === usuarioActual?.id &&
-    (c.nombre.toLowerCase().includes(busquedaCliente.toLowerCase()) || 
-     c.cedula.includes(busquedaCliente))
-  );
+  const misClientesSinPrestamo = clientes
+    .filter(c => !prestamos.find(p => p.clienteId === c.id && p.estado === 'activo'))
+    .filter(c => c.nombre.toLowerCase().includes(busquedaCliente.toLowerCase()) || 
+                 c.cedula?.includes(busquedaCliente));
 
-  const handleCerrar = () => {
-    setPaso(1);
-    setBusquedaCliente('');
-    setClienteSeleccionado(null);
-    setMontoPrestamo('');
-    setNuevoCliente({ nombre: '', cedula: '', telefono: '', zona: '', direccion: '' });
-    onCerrar();
-  };
-
-  const handleCrearCliente = () => {
+  const handleCrearCliente = async () => {
     if (!nuevoCliente.nombre || !nuevoCliente.cedula || !nuevoCliente.telefono) {
       alert('Por favor completa nombre, cédula y teléfono');
       return;
     }
-    
-    const cliente = {
+
+    const clienteData = {
       ...nuevoCliente,
-      id: Date.now().toString(),
       vendedoraId: usuarioActual.id
     };
-    
-    onCrearCliente(cliente);
+
+    const cliente = await onCrearCliente(clienteData);
     setClienteSeleccionado(cliente);
     setPaso(3);
     setNuevoCliente({ nombre: '', cedula: '', telefono: '', zona: '', direccion: '' });
   };
 
-  const handleCrearPrestamo = () => {
+  const handleCrearPrestamo = async () => {
     const monto = parseFloat(montoPrestamo);
     
     if (!monto || monto <= 0) {
@@ -67,11 +57,24 @@ export default function ModalPrestamo({
       return;
     }
 
-    onCrearPrestamo(clienteSeleccionado, monto);
-    handleCerrar();
-  };
+    const montoTotal = monto * 1.20;
+    const cuotaDiaria = Math.round(montoTotal / 24);
 
-  if (!mostrar) return null;
+    const prestamoData = {
+      clienteId: clienteSeleccionado.id,
+      vendedoraId: usuarioActual.id,
+      valorTotal: monto,
+      cuotaDiaria: cuotaDiaria,
+      cuotasPagadas: 0,
+      totalCuotas: 24,
+      ultimoPago: null,
+      estado: 'activo'
+    };
+
+    await onCrearPrestamo(prestamoData);
+    alert('¡Préstamo creado exitosamente!');
+    onCerrar();
+  };
 
   return (
     <div style={{
@@ -97,7 +100,6 @@ export default function ModalPrestamo({
         maxHeight: '90vh',
         overflowY: 'auto'
       }}>
-        {/* PASO 1: Elegir acción */}
         {paso === 1 && (
           <>
             <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Nuevo Préstamo</h2>
@@ -139,7 +141,7 @@ export default function ModalPrestamo({
             </button>
 
             <button
-              onClick={handleCerrar}
+              onClick={onCerrar}
               style={{
                 width: '100%',
                 padding: '16px',
@@ -157,240 +159,147 @@ export default function ModalPrestamo({
           </>
         )}
 
-        {/* PASO 2: Buscar o crear cliente */}
-        {paso === 2 && (
+        {paso === 2 && busquedaCliente === 'NUEVO' && (
           <>
-            {busquedaCliente === 'NUEVO' ? (
-              <>
-                <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Crear Nuevo Cliente</h2>
-                
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                    Nombre Completo *
-                  </label>
-                  <input
-                    type="text"
-                    value={nuevoCliente.nombre}
-                    onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})}
-                    placeholder="Juan Pérez"
-                    autoComplete="off"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '2px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                    Cédula *
-                  </label>
-                  <input
-                    type="text"
-                    value={nuevoCliente.cedula}
-                    onChange={(e) => setNuevoCliente({...nuevoCliente, cedula: e.target.value})}
-                    placeholder="1234567890"
-                    autoComplete="off"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '2px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                    Teléfono *
-                  </label>
-                  <input
-                    type="tel"
-                    value={nuevoCliente.telefono}
-                    onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})}
-                    placeholder="4241234567"
-                    autoComplete="off"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '2px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                    Zona/Barrio
-                  </label>
-                  <input
-                    type="text"
-                    value={nuevoCliente.zona}
-                    onChange={(e) => setNuevoCliente({...nuevoCliente, zona: e.target.value})}
-                    placeholder="Centro"
-                    autoComplete="off"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '2px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                    Dirección
-                  </label>
-                  <input
-                    type="text"
-                    value={nuevoCliente.direccion}
-                    onChange={(e) => setNuevoCliente({...nuevoCliente, direccion: e.target.value})}
-                    placeholder="Calle 123 #45-67"
-                    autoComplete="off"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '2px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <button
-                  onClick={handleCrearCliente}
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    marginBottom: '12px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Continuar con Préstamo
-                </button>
-
-                <button
-                  onClick={() => { setPaso(1); setBusquedaCliente(''); }}
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    background: '#f3f4f6',
-                    color: '#6b7280',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Atrás
-                </button>
-              </>
-            ) : (
-              <>
-                <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Buscar Cliente</h2>
-                
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Crear Nuevo Cliente</h2>
+            
+            {['nombre', 'cedula', 'telefono', 'zona', 'direccion'].map(campo => (
+              <div key={campo} style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
+                  {campo.charAt(0).toUpperCase() + campo.slice(1)} {['nombre', 'cedula', 'telefono'].includes(campo) && '*'}
+                </label>
                 <input
                   type="text"
-                  value={busquedaCliente}
-                  onChange={(e) => setBusquedaCliente(e.target.value)}
-                  placeholder="🔍 Buscar por nombre o cédula..."
+                  value={nuevoCliente[campo]}
+                  onChange={(e) => setNuevoCliente({...nuevoCliente, [campo]: e.target.value})}
                   style={{
                     width: '100%',
                     padding: '12px',
                     border: '2px solid #e5e7eb',
                     borderRadius: '8px',
-                    fontSize: '16px',
-                    marginBottom: '16px'
+                    fontSize: '16px'
                   }}
                 />
+              </div>
+            ))}
 
-                <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '16px' }}>
-                  {clientesSinPrestamo.map(cliente => (
-                    <button
-                      key={cliente.id}
-                      onClick={() => {
-                        setClienteSeleccionado(cliente);
-                        setPaso(3);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '16px',
-                        background: 'white',
-                        border: '2px solid #e5e7eb',
-                        borderRadius: '12px',
-                        marginBottom: '8px',
-                        cursor: 'pointer',
-                        textAlign: 'left'
-                      }}
-                    >
-                      <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{cliente.nombre}</div>
-                      <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                        📍 {cliente.zona} | 📞 {cliente.telefono}
-                      </div>
-                    </button>
-                  ))}
+            <button
+              onClick={handleCrearCliente}
+              style={{
+                width: '100%',
+                padding: '16px',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                marginBottom: '12px',
+                cursor: 'pointer'
+              }}
+            >
+              Continuar
+            </button>
 
-                  {clientesSinPrestamo.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
-                      No hay clientes disponibles
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => setPaso(1)}
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    background: '#f3f4f6',
-                    color: '#6b7280',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Atrás
-                </button>
-              </>
-            )}
+            <button
+              onClick={() => { setPaso(1); setBusquedaCliente(''); }}
+              style={{
+                width: '100%',
+                padding: '16px',
+                background: '#f3f4f6',
+                color: '#6b7280',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              Atrás
+            </button>
           </>
         )}
 
-        {/* PASO 3: Confirmar préstamo */}
+        {paso === 2 && busquedaCliente !== 'NUEVO' && (
+          <>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Buscar Cliente</h2>
+            
+            <input
+              type="text"
+              value={busquedaCliente}
+              onChange={(e) => setBusquedaCliente(e.target.value)}
+              placeholder="🔍 Buscar..."
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '16px',
+                marginBottom: '16px'
+              }}
+            />
+
+            <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '16px' }}>
+              {misClientesSinPrestamo.map(cliente => (
+                <button
+                  key={cliente.id}
+                  onClick={() => {
+                    setClienteSeleccionado(cliente);
+                    setPaso(3);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    background: 'white',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '12px',
+                    marginBottom: '8px',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{cliente.nombre}</div>
+                  <div style={{ fontSize: '14px', color: '#6b7280' }}>📍 {cliente.zona} | 📞 {cliente.telefono}</div>
+                </button>
+              ))}
+
+              {misClientesSinPrestamo.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                  No hay clientes disponibles
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setPaso(1)}
+              style={{
+                width: '100%',
+                padding: '16px',
+                background: '#f3f4f6',
+                color: '#6b7280',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              Atrás
+            </button>
+          </>
+        )}
+
         {paso === 3 && clienteSeleccionado && (
           <>
             <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Confirmar Préstamo</h2>
             
             <div style={{ background: '#f3f4f6', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
-              <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '8px' }}>Cliente:</div>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#10b981' }}>{clienteSeleccionado.nombre}</div>
+              <div style={{ fontWeight: 'bold', fontSize: '18px', color: '#10b981' }}>{clienteSeleccionado.nombre}</div>
               <div style={{ fontSize: '14px', color: '#6b7280' }}>📍 {clienteSeleccionado.zona}</div>
-              <div style={{ fontSize: '14px', color: '#6b7280' }}>📞 {clienteSeleccionado.telefono}</div>
             </div>
 
             <div style={{ background: '#dbeafe', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', marginBottom: '4px' }}>Tu capital disponible:</div>
+              <div style={{ fontSize: '14px', marginBottom: '4px' }}>Capital disponible:</div>
               <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6' }}>
                 {formatCurrency(usuarioActual.capitalDisponible)}
               </div>
@@ -420,14 +329,10 @@ export default function ModalPrestamo({
               <div style={{ background: '#d1fae5', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
                 <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: '600' }}>Resumen:</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span>Monto prestado:</span>
-                  <span style={{ fontWeight: 'bold' }}>{formatCurrency(parseFloat(montoPrestamo))}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span>Total a recibir (+20%):</span>
                   <span style={{ fontWeight: 'bold' }}>{formatCurrency(parseFloat(montoPrestamo) * 1.20)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Cuota diaria (24 días):</span>
                   <span style={{ fontWeight: 'bold', color: '#10b981' }}>
                     {formatCurrency(Math.round((parseFloat(montoPrestamo) * 1.20) / 24))}
