@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import LoginView from '../components/LoginView';
 import HomeView from '../components/HomeView';
 
-export default function Home() {
+export default function SistemaInversiones() {
   const [vistaActual, setVistaActual] = useState('login');
   const [usuarioActual, setUsuarioActual] = useState(null);
   const [cargando, setCargando] = useState(true);
-  const [firebaseOps, setFirebaseOps] = useState(null);
+  const [firebaseOperations, setFirebaseOperations] = useState(null);
   
   const [vendedoras, setVendedoras] = useState([
     { id: 1, nombre: 'Carolina', pin: '1234', color: '#ef4444', capitalDisponible: 2500000 },
@@ -19,29 +19,40 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      import('../lib/firebaseOperations').then(ops => {
-        setFirebaseOps(ops);
-        cargarDatos(ops);
+      import('../lib/firebaseOperations').then(module => {
+        setFirebaseOperations(module);
+        cargarDatos(module);
       }).catch(() => setCargando(false));
+    } else {
+      setCargando(false);
     }
   }, []);
 
-  const cargarDatos = async (ops) => {
+  const cargarDatos = async (operations) => {
     try {
-      const [c, p] = await Promise.all([
-        ops.obtenerClientes(),
-        ops.obtenerPrestamos()
+      const [clientesDB, prestamosDB] = await Promise.all([
+        operations.obtenerClientes(),
+        operations.obtenerPrestamos()
       ]);
-      setClientes(c);
-      setPrestamos(p);
       
-      ops.escucharClientes(setClientes);
-      ops.escucharPrestamos(setPrestamos);
-    } catch (e) {
-      console.error(e);
+      if (clientesDB.length > 0) setClientes(clientesDB);
+      if (prestamosDB.length > 0) setPrestamos(prestamosDB);
+
+      operations.escucharClientes(setClientes);
+      operations.escucharPrestamos(setPrestamos);
+    } catch (error) {
+      console.error('Error:', error);
     } finally {
       setCargando(false);
     }
+  };
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(value);
   };
 
   const handleLogin = (vendedora) => {
@@ -49,23 +60,73 @@ export default function Home() {
     setVistaActual('home');
   };
 
+  const handleRegistrarPago = async (clienteId) => {
+    if (!firebaseOperations) return;
+    
+    const hoy = new Date().toISOString().split('T')[0];
+    const prestamo = prestamos.find(p => p.clienteId === clienteId && p.estado === 'activo');
+    
+    if (prestamo) {
+      await firebaseOperations.actualizarPrestamo(prestamo.id, {
+        cuotasPagadas: prestamo.cuotasPagadas + 1,
+        ultimoPago: hoy
+      });
+    }
+  };
+
+  const handleCrearCliente = async (clienteData) => {
+    if (!firebaseOperations) return null;
+    const id = await firebaseOperations.guardarCliente(clienteData);
+    return { ...clienteData, id };
+  };
+
+  const handleCrearPrestamo = async (prestamoData) => {
+    if (!firebaseOperations) return;
+    
+    await firebaseOperations.guardarPrestamo(prestamoData);
+    
+    const nuevasVendedoras = vendedoras.map(v => {
+      if (v.id === usuarioActual.id) {
+        return { ...v, capitalDisponible: v.capitalDisponible - prestamoData.valorTotal };
+      }
+      return v;
+    });
+    setVendedoras(nuevasVendedoras);
+    
+    const vendedoraActualizada = nuevasVendedoras.find(v => v.id === usuarioActual.id);
+    setUsuarioActual(vendedoraActualizada);
+    
+    await firebaseOperations.actualizarVendedora(usuarioActual.id, { 
+      capitalDisponible: vendedoraActualizada.capitalDisponible 
+    });
+  };
+
   if (vistaActual === 'login') {
-    return <LoginView vendedoras={vendedoras} onLogin={handleLogin} cargando={cargando} />;
+    return (
+      <LoginView 
+        vendedoras={vendedoras}
+        onLogin={handleLogin}
+        cargando={cargando}
+      />
+    );
   }
 
-  return (
-    <HomeView 
-      usuario={usuarioActual}
-      clientes={clientes}
-      prestamos={prestamos}
-      vendedoras={vendedoras}
-      setVendedoras={setVendedoras}
-      setUsuarioActual={setUsuarioActual}
-      firebaseOps={firebaseOps}
-      onLogout={() => {
-        setUsuarioActual(null);
-        setVistaActual('login');
-      }}
-    />
-  );
+  if (vistaActual === 'home' && usuarioActual && !usuarioActual.esAdmin) {
+    return (
+      <HomeView
+        usuarioActual={usuarioActual}
+        clientes={clientes}
+        prestamos={prestamos}
+        vendedoras={vendedoras}
+        onRegistrarPago={handleRegistrarPago}
+        onCrearCliente={handleCrearCliente}
+        onCrearPrestamo={handleCrearPrestamo}
+        onCerrarSesion={() => setVistaActual('login')}
+        formatCurrency={formatCurrency}
+        firebaseOperations={firebaseOperations}
+      />
+    );
+  }
+
+  return null;
 }
