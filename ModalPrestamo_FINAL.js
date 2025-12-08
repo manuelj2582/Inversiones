@@ -38,18 +38,17 @@ const ModalPrestamo = ({ cliente, onConfirmar, onCancelar, formatCurrency }) => 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-md w-full">
+      <div className="bg-white rounded-lg p-8 shadow-xl max-w-md w-full">
         <h2 className="text-2xl font-bold mb-6 text-gray-800">Nuevo Préstamo</h2>
 
         <div className="mb-6 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
           <p className="text-sm text-gray-600 font-semibold">{cliente.nombre}</p>
-          {cliente.cedula && <p className="text-sm text-gray-600">📋 {cliente.cedula}</p>}
-          <p className="text-sm text-gray-600">📱 {cliente.telefono}</p>
+          <p className="text-sm text-gray-500">{cliente.telefono}</p>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Monto del Préstamo</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Monto</label>
             <input
               type="number"
               value={monto}
@@ -60,35 +59,31 @@ const ModalPrestamo = ({ cliente, onConfirmar, onCancelar, formatCurrency }) => 
               onKeyPress={manejarKeyPress}
               placeholder="50000"
               disabled={cargando}
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none disabled:bg-gray-100 text-lg"
+              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none disabled:bg-gray-100"
               autoFocus
             />
           </div>
 
           {monto && (
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg space-y-3 text-sm border border-gray-200">
-              <div className="flex justify-between pb-2 border-b">
-                <span className="text-gray-600">Monto Original:</span>
-                <span className="font-bold text-gray-800">{formatCurrency(montoNum)}</span>
-              </div>
-              <div className="flex justify-between pb-2 border-b">
+            <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm border border-gray-200">
+              <div className="flex justify-between">
                 <span className="text-gray-600">Interés (20%):</span>
-                <span className="font-semibold text-orange-600">{formatCurrency(interes)}</span>
+                <span className="font-semibold">{formatCurrency(interes)}</span>
               </div>
-              <div className="flex justify-between pb-2 border-b">
-                <span className="text-gray-600 font-semibold">Total a Pagar:</span>
-                <span className="font-bold text-lg text-blue-600">{formatCurrency(montoTotal)}</span>
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-gray-600 font-semibold">Total a pagar:</span>
+                <span className="font-bold text-lg">{formatCurrency(montoTotal)}</span>
               </div>
-              <div className="flex justify-between bg-yellow-50 -m-2 p-3 rounded border-l-4 border-yellow-500">
-                <span className="text-yellow-800">Cuota Diaria (÷24):</span>
-                <span className="font-bold text-yellow-700">{formatCurrency(cuotaDiaria)}</span>
+              <div className="flex justify-between text-blue-600 border-t pt-2">
+                <span>Cuota diaria (÷24):</span>
+                <span className="font-semibold">{formatCurrency(cuotaDiaria)}</span>
               </div>
             </div>
           )}
 
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg text-sm">
-              ⚠️ {error}
+              {error}
             </div>
           )}
         </div>

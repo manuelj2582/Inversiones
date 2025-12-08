@@ -54,18 +54,18 @@ const FormNuevoCliente = ({ onConfirmar, onCancelar }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-md w-full">
+      <div className="bg-white rounded-xl p-8 shadow-2xl max-w-md w-full">
         <h2 className="text-2xl font-bold mb-6 text-gray-800">Nuevo Cliente</h2>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre Completo</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
             <input
               type="text"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               onKeyPress={manejarKeyPress}
-              placeholder="Juan Pérez García"
+              placeholder="Juan Pérez"
               disabled={cargando}
               className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none disabled:bg-gray-100"
               autoFocus
@@ -105,15 +105,15 @@ const FormNuevoCliente = ({ onConfirmar, onCancelar }) => {
               value={direccion}
               onChange={(e) => setDireccion(e.target.value)}
               onKeyPress={manejarKeyPress}
-              placeholder="Calle 1 #2, Apto 3"
+              placeholder="Calle 1 #2"
               disabled={cargando}
               className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none disabled:bg-gray-100"
             />
           </div>
 
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg text-sm">
-              ⚠️ {error}
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+              {error}
             </div>
           )}
         </div>
@@ -129,9 +129,9 @@ const FormNuevoCliente = ({ onConfirmar, onCancelar }) => {
           <button
             onClick={manejarConfirmar}
             disabled={cargando}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 transition"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 transition"
           >
-            {cargando ? 'Guardando...' : 'Guardar'}
+            {cargando ? 'Guardando...' : 'Continuar'}
           </button>
         </div>
       </div>
