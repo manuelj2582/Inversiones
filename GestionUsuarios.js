@@ -1,352 +1,157 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 
-const GestionUsuarios = ({
-  vendedoras,
-  formatCurrency,
-  onActualizarVendedora,
-}) => {
-  const permisosPorRol = {
-    vendedora: {
-      verClientes: true,
-      crearPrestamos: true,
-      registrarPagos: true,
-      verReportes: false,
-      verConfiguracion: false,
-      editarClientes: true,
-    },
-    supervisor: {
-      verClientes: true,
-      crearPrestamos: false,
-      registrarPagos: false,
-      verReportes: true,
-      verConfiguracion: false,
-      editarClientes: false,
-    },
-    contador: {
-      verClientes: false,
-      crearPrestamos: false,
-      registrarPagos: false,
-      verReportes: true,
-      verConfiguracion: true,
-      editarClientes: false,
-    },
+const GestionUsuarios = ({ vendedoras, formatCurrency, firebaseOperations }) => {
+  const [mostrarModal, setMostrarModal] = useState(false);
+  const [vendedoraEditando, setVendedoraEditando] = useState(null);
+  const [formData, setFormData] = useState({});
+  const [cargando, setCargando] = useState(false);
+
+  const handleEditar = (vendedora) => {
+    setVendedoraEditando(vendedora);
+    setFormData({
+      nombre: vendedora.nombre,
+      pin: vendedora.pin,
+      color: vendedora.color,
+      capitalDisponible: vendedora.capitalDisponible,
+    });
+    setMostrarModal(true);
   };
 
-  // Convertir vendedoras a usuarios
-  const [usuarios, setUsuarios] = useState(
-    vendedoras
-      .filter(v => !v.esAdmin)
-      .map(v => ({
-        id: v.id,
-        nombre: v.nombre,
-        pin: v.pin,
-        color: v.color,
-        rol: v.rol || 'vendedora',
-        estado: v.estado || 'activo',
-        fechaCreacion: v.fechaCreacion || new Date().toISOString(),
-        capitalInicial: v.capitalDisponible || 0,
-        permisos: v.permisos || permisosPorRol['vendedora'],
-      }))
-  );
-
-  const [editandoUsuario, setEditandoUsuario] = useState(null);
-
-  const rolesDisponibles = [
-    { id: 'vendedora', nombre: 'Vendedora', color: '#3b82f6', descripcion: 'Vende y cobra' },
-    { id: 'supervisor', nombre: 'Supervisor', color: '#8b5cf6', descripcion: 'Supervisa vendedoras' },
-    { id: 'contador', nombre: 'Contador', color: '#10b981', descripcion: 'Ver reportes y finanzas' },
-  ];
-
-  const actualizarUsuario = () => {
-    if (onActualizarVendedora) {
-      onActualizarVendedora({
-        ...editandoUsuario,
-      });
-    }
-    setEditandoUsuario(null);
-  };
-
-  const cambiarRol = (usuarioId, nuevoRol) => {
-    const usuarioActualizado = usuarios.find(u => u.id === usuarioId);
-    if (usuarioActualizado && onActualizarVendedora) {
-      onActualizarVendedora({
-        ...usuarioActualizado,
-        rol: nuevoRol,
-        permisos: permisosPorRol[nuevoRol],
-      });
+  const handleGuardar = async () => {
+    setCargando(true);
+    try {
+      if (!firebaseOperations) throw new Error('Firebase no disponible');
       
-      setUsuarios(
-        usuarios.map(u =>
-          u.id === usuarioId
-            ? {
-                ...u,
-                rol: nuevoRol,
-                permisos: permisosPorRol[nuevoRol],
-              }
-            : u
-        )
-      );
+      await firebaseOperations.actualizarVendedora(vendedoraEditando.id, formData);
+      setMostrarModal(false);
+      setVendedoraEditando(null);
+      alert('✅ Vendedora actualizada correctamente');
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error: ' + error.message);
+    } finally {
+      setCargando(false);
     }
   };
-
-  const cambiarEstado = (usuarioId, nuevoEstado) => {
-    const usuarioActualizado = usuarios.find(u => u.id === usuarioId);
-    if (usuarioActualizado && onActualizarVendedora) {
-      onActualizarVendedora({
-        ...usuarioActualizado,
-        estado: nuevoEstado,
-      });
-      
-      setUsuarios(
-        usuarios.map(u =>
-          u.id === usuarioId
-            ? { ...u, estado: nuevoEstado }
-            : u
-        )
-      );
-    }
-  };
-
-  const usuariosActivos = usuarios.filter(u => u.estado === 'activo').length;
-  const usuariosInactivos = usuarios.filter(u => u.estado === 'inactivo').length;
 
   return (
     <div className="space-y-6">
-      {/* Resumen */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded-lg">
-          <p className="text-blue-800 text-xs font-semibold mb-1">Usuarios Activos</p>
-          <p className="text-2xl font-bold text-blue-600">{usuariosActivos}</p>
-        </div>
-
-        <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded-lg">
-          <p className="text-red-800 text-xs font-semibold mb-1">Usuarios Inactivos</p>
-          <p className="text-2xl font-bold text-red-600">{usuariosInactivos}</p>
-        </div>
-
-        <div className="bg-green-50 border-l-4 border-green-600 p-4 rounded-lg">
-          <p className="text-green-800 text-xs font-semibold mb-1">Total Usuarios</p>
-          <p className="text-2xl font-bold text-green-600">{usuarios.length}</p>
-        </div>
-      </div>
-
-      {/* Lista de usuarios */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold text-gray-800">👥 Usuarios del Sistema</h3>
-
-        {usuarios.map(usuario => {
-          const rolInfo = rolesDisponibles.find(r => r.id === usuario.rol);
-          const vendedoraOriginal = vendedoras.find(v => v.id === usuario.id);
-
-          return (
-            <div
-              key={usuario.id}
-              className="bg-white rounded-lg shadow-md p-6 border-t-4"
-              style={{ borderColor: usuario.color }}
-            >
-              {editandoUsuario?.id === usuario.id ? (
-                // Modo edición
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        PIN:
-                      </label>
-                      <input
-                        type="text"
-                        value={editandoUsuario.pin}
-                        onChange={(e) =>
-                          setEditandoUsuario({ ...editandoUsuario, pin: e.target.value })
-                        }
-                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Rol:
-                      </label>
-                      <select
-                        value={editandoUsuario.rol}
-                        onChange={(e) =>
-                          setEditandoUsuario({
-                            ...editandoUsuario,
-                            rol: e.target.value,
-                            permisos: permisosPorRol[e.target.value],
-                          })
-                        }
-                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg"
-                      >
-                        {rolesDisponibles.map(r => (
-                          <option key={r.id} value={r.id}>
-                            {r.nombre}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Estado:
-                    </label>
-                    <select
-                      value={editandoUsuario.estado}
-                      onChange={(e) =>
-                        setEditandoUsuario({ ...editandoUsuario, estado: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg"
-                    >
-                      <option value="activo">🟢 Activo</option>
-                      <option value="inactivo">🔴 Inactivo</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2 p-3 bg-gray-50 rounded">
-                    <h4 className="font-bold text-gray-800 mb-2">Permisos:</h4>
-                    {Object.keys(editandoUsuario.permisos).map(permiso => (
-                      <label key={permiso} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editandoUsuario.permisos[permiso]}
-                          onChange={(e) =>
-                            setEditandoUsuario({
-                              ...editandoUsuario,
-                              permisos: {
-                                ...editandoUsuario.permisos,
-                                [permiso]: e.target.checked,
-                              },
-                            })
-                          }
-                          className="w-4 h-4"
-                        />
-                        <span className="text-gray-700 text-sm">{permiso}</span>
-                      </label>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={actualizarUsuario}
-                      className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition"
-                    >
-                      ✅ Guardar
-                    </button>
-                    <button
-                      onClick={() => setEditandoUsuario(null)}
-                      className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition"
-                    >
-                      ✕ Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // Modo vista
-                <>
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-800">{usuario.nombre}</h4>
-                      <p className="text-sm text-gray-600">ID: {usuario.id}</p>
-                    </div>
-                    <span
-                      className="px-3 py-1 rounded-full text-white text-sm font-bold"
-                      style={{ backgroundColor: rolInfo?.color }}
-                    >
-                      {rolInfo?.nombre}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                    <div className="bg-gray-50 p-2 rounded">
-                      <p className="text-xs text-gray-600">PIN</p>
-                      <p className="font-bold">••••</p>
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded">
-                      <p className="text-xs text-gray-600">Estado</p>
-                      <p className={`font-bold text-sm ${usuario.estado === 'activo' ? 'text-green-600' : 'text-red-600'}`}>
-                        {usuario.estado === 'activo' ? '🟢 Activo' : '🔴 Inactivo'}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded">
-                      <p className="text-xs text-gray-600">Capital</p>
-                      <p className="font-bold text-sm">{formatCurrency(vendedoraOriginal?.capitalDisponible || 0)}</p>
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded">
-                      <p className="text-xs text-gray-600">Creado</p>
-                      <p className="font-bold text-sm">
-                        {new Date(usuario.fechaCreacion).toLocaleDateString('es-CO')}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mb-4 p-3 bg-blue-50 rounded">
-                    <p className="text-sm text-gray-700">
-                      <strong>Permisos:</strong> {Object.values(usuario.permisos).filter(Boolean).length}/{Object.keys(usuario.permisos).length} activos
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {Object.entries(usuario.permisos)
-                        .filter(([_, valor]) => valor)
-                        .map(([clave]) => clave)
-                        .join(', ')}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2 flex-wrap">
-                    <button
-                      onClick={() => setEditandoUsuario(usuario)}
-                      className="flex-1 min-w-[120px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
-                    >
-                      ✏️ Editar
-                    </button>
-                    <button
-                      onClick={() => cambiarRol(usuario.id, usuario.rol === 'vendedora' ? 'supervisor' : 'vendedora')}
-                      className="flex-1 min-w-[120px] px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition"
-                    >
-                      🔄 {usuario.rol === 'vendedora' ? 'Supervisor' : 'Vendedora'}
-                    </button>
-                    <button
-                      onClick={() => cambiarEstado(usuario.id, usuario.estado === 'activo' ? 'inactivo' : 'activo')}
-                      className={`flex-1 min-w-[120px] px-4 py-2 text-white font-semibold rounded-lg transition ${
-                        usuario.estado === 'activo'
-                          ? 'bg-red-600 hover:bg-red-700'
-                          : 'bg-green-600 hover:bg-green-700'
-                      }`}
-                    >
-                      {usuario.estado === 'activo' ? '🔴 Desactivar' : '🟢 Activar'}
-                    </button>
-                  </div>
-                </>
-              )}
+      <h3 className="text-xl font-bold text-gray-800 mb-4">👨‍💼 Gestión de Usuarios</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {vendedoras.filter(v => !v.esAdmin).map(vendedora => (
+          <div key={vendedora.id} className="bg-white p-6 rounded-lg shadow-md border-t-4" style={{ borderColor: vendedora.color }}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-bold text-gray-800">{vendedora.nombre}</h4>
+              <span className="px-3 py-1 rounded-full text-white text-sm font-semibold" style={{ backgroundColor: vendedora.color }}>
+                ID: {vendedora.id}
+              </span>
             </div>
-          );
-        })}
-      </div>
 
-      {/* Información de roles */}
-      <div className="bg-blue-50 border-l-4 border-blue-600 p-6 rounded-lg">
-        <h3 className="font-bold text-blue-800 mb-3">ℹ️ Roles Disponibles</h3>
-        <div className="space-y-3">
-          {rolesDisponibles.map(rol => (
-            <div key={rol.id} className="flex items-start gap-3">
-              <span
-                className="w-4 h-4 rounded mt-1"
-                style={{ backgroundColor: rol.color }}
-              ></span>
-              <div>
-                <p className="font-semibold text-blue-800">{rol.nombre}</p>
-                <p className="text-sm text-blue-700">{rol.descripcion}</p>
+            <div className="space-y-2 mb-4">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-xs text-gray-600">PIN</p>
+                <p className="text-lg font-bold text-gray-800 font-mono">{vendedora.pin}</p>
+              </div>
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-xs text-gray-600">Color</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="w-6 h-6 rounded" style={{ backgroundColor: vendedora.color }}></div>
+                  <p className="text-sm text-gray-800">{vendedora.color}</p>
+                </div>
+              </div>
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <p className="text-xs text-gray-600">Capital Disponible</p>
+                <p className="text-lg font-bold text-blue-600">{formatCurrency(vendedora.capitalDisponible || 0)}</p>
               </div>
             </div>
-          ))}
-        </div>
+
+            <button
+              onClick={() => handleEditar(vendedora)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition"
+            >
+              ✏️ Editar
+            </button>
+          </div>
+        ))}
       </div>
 
-      {/* Nota de integración */}
-      <div className="bg-green-50 border-l-4 border-green-600 p-6 rounded-lg">
-        <h3 className="font-bold text-green-800 mb-2">✅ Nota Importante</h3>
-        <p className="text-green-700 text-sm">
-          Los cambios realizados aquí se guardan en la colección <strong>vendedoras</strong> de Firebase. Los campos adicionales (rol, estado, permisos) se sincronizan automáticamente.
-        </p>
-      </div>
+      {/* Modal Editar */}
+      {mostrarModal && vendedoraEditando && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">✏️ Editar Vendedora</h3>
+            
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre:</label>
+                <input
+                  type="text"
+                  value={formData.nombre || ''}
+                  onChange={(e) => setFormData({...formData, nombre: e.target.value})}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">PIN (4 dígitos):</label>
+                <input
+                  type="text"
+                  value={formData.pin || ''}
+                  onChange={(e) => {
+                    const valor = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    setFormData({...formData, pin: valor});
+                  }}
+                  maxLength="4"
+                  placeholder="0000"
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none font-mono text-lg font-bold"
+                />
+                <p className="text-xs text-gray-500 mt-1">Solo números, máximo 4 dígitos</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Color:</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="color"
+                    value={formData.color || '#000000'}
+                    onChange={(e) => setFormData({...formData, color: e.target.value})}
+                    className="w-16 h-10 border-2 border-gray-300 rounded-lg cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-600">{formData.color}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Capital Disponible:</label>
+                <input
+                  type="number"
+                  value={formData.capitalDisponible || 0}
+                  onChange={(e) => setFormData({...formData, capitalDisponible: parseFloat(e.target.value)})}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setMostrarModal(false)}
+                disabled={cargando}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400 transition disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleGuardar}
+                disabled={cargando}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {cargando ? '⏳ Guardando...' : '✅ Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

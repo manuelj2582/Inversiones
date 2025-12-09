@@ -220,7 +220,7 @@ export default function DistribuidoraPro() {
   if (vistaActual === 'login') {
     return (
       <LoginView 
-        vendedoras={vendedoras}
+        vendedoras={ejecutivas}
         onLogin={handleLogin}
       />
     );
@@ -230,9 +230,9 @@ export default function DistribuidoraPro() {
     return (
       <AdminDashboard
         usuarioActual={usuarioActual}
-        vendedoras={vendedoras}
-        clientes={clientes}
-        prestamos={prestamos}
+        vendedoras={ejecutivas}
+        clientes={puntosVenta}
+        prestamos={distribuciones}
         formatCurrency={formatCurrency}
         onCerrarSesion={() => {
           setUsuarioActual(null);
@@ -247,9 +247,9 @@ export default function DistribuidoraPro() {
     return (
       <HomeView
         usuarioActual={usuarioActual}
-        clientes={clientes}
-        prestamos={prestamos}
-        vendedoras={vendedoras}
+        clientes={puntosVenta}
+        prestamos={distribuciones}
+        vendedoras={ejecutivas}
         onRegistrarPago={handleRegistrarPago}
         onCrearCliente={handleCrearCliente}
         onCrearPrestamo={handleCrearPrestamo}
