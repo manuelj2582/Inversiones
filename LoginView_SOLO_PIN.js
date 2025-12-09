@@ -190,9 +190,6 @@ const LoginView = ({ vendedoras, onLogin }) => {
             <p className="text-xs text-gray-500">
               🔒 Acceso seguro y encriptado
             </p>
-            <a href="/setup" className="text-xs text-blue-500 hover:text-blue-700 underline mt-2 inline-block">
-              🔧 Inicializar Sistema
-            </a>
           </div>
         </div>
       </div>
