@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { collection, setDoc, doc } from 'firebase/firestore';
+import { setDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebaseClient';
 
 export default function Setup() {
@@ -11,6 +11,8 @@ export default function Setup() {
     setMensaje('⏳ Inicializando...');
     
     try {
+      console.log('Iniciando configuración...');
+      
       const vendedoras = [
         {
           id: '1',
@@ -29,7 +31,7 @@ export default function Setup() {
           esAdmin: false,
         },
         {
-          id: 'admin',
+          id: '0',
           nombre: 'Admin',
           pin: '0000',
           color: '#a855f7',
@@ -38,28 +40,38 @@ export default function Setup() {
         },
       ];
 
+      console.log('DB:', db);
+      console.log('Vendedoras:', vendedoras);
+
       // Guardar vendedoras en Firebase
       for (const vendedora of vendedoras) {
-        const vendedoraRef = doc(db, 'vendedoras', vendedora.id);
-        await setDoc(vendedoraRef, {
-          id: vendedora.id,
-          nombre: vendedora.nombre,
-          pin: vendedora.pin,
-          color: vendedora.color,
-          capitalDisponible: vendedora.capitalDisponible,
-          esAdmin: vendedora.esAdmin,
-          createdAt: new Date().toISOString(),
-        });
-        console.log(`✅ Vendedora "${vendedora.nombre}" creada`);
+        try {
+          const vendedoraRef = doc(db, 'vendedoras', vendedora.id);
+          console.log('Guardando:', vendedora.nombre, 'en', vendedora.id);
+          await setDoc(vendedoraRef, {
+            id: vendedora.id,
+            nombre: vendedora.nombre,
+            pin: vendedora.pin,
+            color: vendedora.color,
+            capitalDisponible: vendedora.capitalDisponible,
+            esAdmin: vendedora.esAdmin,
+            createdAt: new Date().toISOString(),
+          });
+          console.log(`✅ Vendedora "${vendedora.nombre}" creada`);
+          setMensaje(prev => prev + `\n✅ ${vendedora.nombre} iniciada`);
+        } catch (err) {
+          console.error('Error guardando', vendedora.nombre, err);
+          throw err;
+        }
       }
 
-      setMensaje('✅ ¡Sistema inicializado correctamente! Ahora puedes hacer login.');
+      setMensaje('✅ ¡Sistema inicializado correctamente! Redirigiendo...');
       setTimeout(() => {
         window.location.href = '/';
-      }, 3000);
+      }, 2000);
     } catch (error) {
-      console.error('Error:', error);
-      setMensaje('❌ Error: ' + error.message);
+      console.error('Error completo:', error);
+      setMensaje('❌ Error: ' + error.message + '\n\nRevisa la consola (F12) para más detalles');
     } finally {
       setCargando(false);
     }
@@ -84,8 +96,8 @@ export default function Setup() {
         </div>
 
         {mensaje && (
-          <div className={`mb-4 p-3 rounded-lg text-sm font-semibold ${
-            mensaje.includes('✅') 
+          <div className={`mb-4 p-3 rounded-lg text-sm font-semibold whitespace-pre-wrap max-h-64 overflow-y-auto ${
+            mensaje.includes('✅') && !mensaje.includes('❌')
               ? 'bg-green-100 text-green-800' 
               : mensaje.includes('❌')
               ? 'bg-red-100 text-red-800'
